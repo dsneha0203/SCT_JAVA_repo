@@ -3,12 +3,15 @@ package com.simpsoft.salesCommission.app.calculation;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -245,7 +248,8 @@ public class CalculateCompAmountSimpRank {
 		logger.debug("---PRINTING THE ELEMENTS OF RULE DATE EMP MAP ----");
 		String prevRuleName="";
 		int counter=0;
-		
+		Map<Rule,Map<Date,Date>> storedRuleDatesMap = new HashMap<>(); 
+		Map<Date,Date> storedMap = new HashMap<>();
 		for(Map.Entry<Map<Rule,Map<Date,Date>>, List<Employee>> entry : rule_date_emp_map.entrySet()) {
 			Map<Rule,Map<Date,Date>> ruleDateMap = entry.getKey();
 			for(Map.Entry<Rule,Map<Date,Date>> map : ruleDateMap.entrySet()) {
@@ -253,10 +257,22 @@ public class CalculateCompAmountSimpRank {
 				if(counter==0) {
 					prevRuleName = map.getKey().getRuleName();
 					counter+=1;
-
+				
 				Map<Date,Date> datesMap = map.getValue();
 				for(Map.Entry<Date, Date> entry2 : datesMap.entrySet()) {
-					getEmpList(map.getKey(),entry2.getKey(),entry2.getValue());
+					if(storedMap.isEmpty()) {
+						getEmpList(map.getKey(),entry2.getKey(),entry2.getValue());
+						storedMap.put(entry2.getKey(), entry2.getValue());
+						storedRuleDatesMap.put(map.getKey(), storedMap);
+					}else {
+						boolean datesPresent = checkMapDates(map.getKey(),entry2.getKey(),entry2.getValue(),storedRuleDatesMap);
+						if(datesPresent == false) {
+							getEmpList(map.getKey(),entry2.getKey(),entry2.getValue());
+							storedMap.put(entry2.getKey(), entry2.getValue());
+							storedRuleDatesMap.put(map.getKey(), storedMap);
+						}
+					}
+					
 					
 				}
 				
@@ -264,7 +280,18 @@ public class CalculateCompAmountSimpRank {
 					if(!prevRuleName.equals(map.getKey().getRuleName())) {
 						Map<Date,Date> datesMap = map.getValue();
 						for(Map.Entry<Date, Date> entry2 : datesMap.entrySet()) {
-							getEmpList(map.getKey(),entry2.getKey(),entry2.getValue());
+							if(storedMap.isEmpty()) {
+								getEmpList(map.getKey(),entry2.getKey(),entry2.getValue());
+								storedMap.put(entry2.getKey(), entry2.getValue());
+								storedRuleDatesMap.put(map.getKey(), storedMap);
+							}else {
+								boolean datesPresent = checkMapDates(map.getKey(),entry2.getKey(),entry2.getValue(),storedRuleDatesMap);
+								if(datesPresent == false) {
+									getEmpList(map.getKey(),entry2.getKey(),entry2.getValue());
+									storedMap.put(entry2.getKey(), entry2.getValue());
+									storedRuleDatesMap.put(map.getKey(), storedMap);
+								}
+							}
 						}
 						prevRuleName = map.getKey().getRuleName();
 					}
@@ -275,20 +302,25 @@ public class CalculateCompAmountSimpRank {
 			
 			
 		}
-		
+		Map<Map<Rule,Map<Date,Date>>, List<Employee>> finalEmpRuleDatesMap_2 = createMap(finalEmpRuleDatesMap);
 		logger.debug("---PRINTING THE ELEMENTS OF FINAL RULE DATE EMP MAP ----");
-		for(Map.Entry<Map<Rule,Map<Date,Date>>, List<Employee>> entry : finalEmpRuleDatesMap.entrySet()) {
+		for(Map.Entry<Map<Rule,Map<Date,Date>>, List<Employee>> entry : finalEmpRuleDatesMap_2.entrySet()) {
 			Map<Rule,Map<Date,Date>> ruleDateMap = entry.getKey();
+			Map<Rule,Map<Role,List<Employee>>> rule_role_emplist_map =new HashMap<>();
 			for(Map.Entry<Rule,Map<Date,Date>> map : ruleDateMap.entrySet()) {
-				logger.debug("RULE NAME= "+ map.getKey().getRuleName());
+				
+				Date start_date=new Date();
+				Date end_date = new Date();
 				RuleSimple ruleSimple = ruleAPI.findSimpleRule(map.getKey().getId());
+				logger.debug("RULE NAME= "+ map.getKey().getRuleName());
 				logger.debug("RULE POPULATION TYPE= "+ ruleSimple.getPopulationType());
 				Map<Date,Date> datesMap = map.getValue();
 				for(Map.Entry<Date, Date> entry2 : datesMap.entrySet()) {
 					logger.debug("START DATE= "+entry2.getKey());
 					logger.debug("END DATE= "+entry2.getValue());
-					Date start_date = entry2.getKey();
-					Date end_date = entry2.getValue();
+					 start_date = entry2.getKey();
+					 end_date = entry2.getValue();
+				}
 					List<Employee> empList = entry.getValue();
 					logger.debug("empList size= "+ empList.size());
 					for(Employee emp : empList) {
@@ -297,7 +329,7 @@ public class CalculateCompAmountSimpRank {
 					
 					//get a list of all employees with same role for whom the same rule is qualified 
 					if(ruleSimple.getPopulationType().equals("SameRole")) {
-						Map<Rule,Map<Role,List<Employee>>> rule_role_emplist_map =new HashMap<>();
+						
 						Map<Role,List<Employee>> role_emplist_map = new HashMap<>();
 						List<Role> roleList = roleAPI.listOfRoles();
 						for(Role role : roleList) {
@@ -321,7 +353,19 @@ public class CalculateCompAmountSimpRank {
 							role_emplist_map.put(role, employeeList);
 							}
 						}
+
+					
 						rule_role_emplist_map.put(map.getKey(), role_emplist_map);
+						logger.debug("---PRINTING RULE ROLE EMPLIST MAP FOR START DATE="+start_date+" AND END DATE= "+ end_date+"---");
+//						logger.debug(rule_role_emplist_map);
+						for(Map.Entry<Rule, Map<Role,List<Employee>>> main_map : rule_role_emplist_map.entrySet()) {
+							logger.debug("RULE NAME= "+main_map.getKey().getRuleName());
+							for(Map.Entry<Role, List<Employee>> sec_map : main_map.getValue().entrySet()) {
+								logger.debug("ROLE NAME= "+sec_map.getKey().getRoleName());
+								logger.debug("EMP LIST= "+sec_map.getValue());
+							}
+						}
+						
 						doRankingSameRole(rule_role_emplist_map,start_date,end_date,ruleAPI);
 					}
 					
@@ -351,7 +395,7 @@ public class CalculateCompAmountSimpRank {
 							}
 						}
 						rule_manager_emplist_map.put(map.getKey(), manager_emplist_map);
-						doRankingSameMgr(rule_manager_emplist_map,start_date,end_date);
+						doRankingSameMgr(rule_manager_emplist_map,start_date,end_date, ruleAPI);
 					}
 					
 					
@@ -359,13 +403,94 @@ public class CalculateCompAmountSimpRank {
 					if(ruleSimple.getPopulationType().equals("global upto")) {
 						
 					}
-				}
+				
 			}
 		}
 		
 	}
 
 	
+	public static Map<Map<Rule,Map<Date,Date>>, List<Employee>> createMap(Map<Map<Rule,Map<Date,Date>>, List<Employee>> m) {
+	    Map<Map<Rule,Map<Date,Date>>, List<Employee>> map = new HashMap<Map<Rule,Map<Date,Date>>, List<Employee>>();
+	   logger.debug("IN CREATE MAP METHOD");
+	    for(Map.Entry<Map<Rule,Map<Date, Date>>, List<Employee>> entry : m.entrySet()) {
+	    	logger.debug("ENTRY MAP KEY= "+entry.getKey());
+	    	String entryRuleName = null;
+	    	Date entryStartDate= new Date();
+	    	Date entryEndDate= new Date();
+	    	for(Map.Entry<Rule, Map<Date,Date>> entry_det : entry.getKey().entrySet()) {
+	    		entryRuleName = entry_det.getKey().getRuleName();
+	    		for(Map.Entry<Date, Date> entry_det_date : entry_det.getValue().entrySet()) {
+	    			entryStartDate = entry_det_date.getKey();
+	    			entryEndDate = entry_det_date.getValue();
+	    		}
+	    	}
+	       if(map.isEmpty()) {
+	    	   map.put(entry.getKey(), entry.getValue());
+	    	 }else {
+	    		 int flag = 0;
+	    		 for(Map.Entry<Map<Rule,Map<Date,Date>>, List<Employee>> entry2 : map.entrySet()) {
+	    			 logger.debug("MAP KEY = "+entry2.getKey());
+	    			 String entry2RuleName = null;
+	    		    	Date entry2StartDate= new Date();
+	    		    	Date entry2EndDate= new Date();
+	    		    	for(Map.Entry<Rule, Map<Date,Date>> entry2_det : entry2.getKey().entrySet()) {
+	    		    		entry2RuleName = entry2_det.getKey().getRuleName();
+	    		    		for(Map.Entry<Date, Date> entry2_det_date : entry2_det.getValue().entrySet()) {
+	    		    			entry2StartDate = entry2_det_date.getKey();
+	    		    			entry2EndDate = entry2_det_date.getValue();
+	    		    		}
+	    		    	} 
+	    			 if(entryRuleName.equals(entry2RuleName) && entryStartDate.equals(entry2StartDate) && entryEndDate.equals(entry2EndDate)) {
+	    				 logger.debug("KEYS MATCH");
+	    				 flag++;
+	    				 break;
+	    			 }
+	    		 }
+	    		 if(flag == 0) {
+	    			 map.put(entry.getKey(), entry.getValue());
+	    		 }
+	    	 }
+	       logger.debug("MAP= "+map);
+	    }
+	   
+	    return map;
+	}
+
+	private static boolean checkMapDates(Rule rule, Date sDate, Date eDate, Map<Rule, Map<Date, Date>> storedRuleDatesMap) {
+		logger.debug("IN CHECK MAP DATES METHOD");
+		logger.debug("RULE TO BE TESTED= "+rule);
+		logger.debug("START DATE TO BE TESTED= "+sDate);
+		logger.debug("END DATE TO BE TESTED= "+eDate);
+		logger.debug("STORED RULE MAP= "+storedRuleDatesMap);
+		logger.debug("KEY RULES PRESENT IN THE MAP: ");
+		for(Rule r : storedRuleDatesMap.keySet()) {
+			logger.debug("RULE= "+r);
+		}
+		if(storedRuleDatesMap.containsKey(rule)) {
+			logger.debug("RULE IS PRESENT");
+			Map<Date,Date> datesMap = storedRuleDatesMap.get(rule);
+			if(datesMap.containsKey(sDate)) {
+				if(eDate.equals(datesMap.get(sDate))) {
+					logger.debug("DATES ARE PRESENT");
+					return true;
+				}else {
+					logger.debug("DATES ARE NOT PRESENT");
+					return false;
+				}
+			}else {
+				logger.debug("THIS START DATE IS NOT PRESENT FOR THIS RULE");
+				return false;
+			}
+			
+		}else {
+			logger.debug("THIS RULE IS NOT PRESENT");
+			return false;
+		}
+		
+	}
+
+
 
 
 	private static void getEmpList(Rule key, Date startDate, Date endDate) {
@@ -412,20 +537,39 @@ public class CalculateCompAmountSimpRank {
 
 
 
-	private static void doRankingSameMgr(Map<Rule, Map<Employee, List<Employee>>> rule_manager_emplist_map, Date start_date, Date end_date) {
+	private static void doRankingSameMgr(Map<Rule, Map<Employee, List<Employee>>> rule_manager_emplist_map, Date start_date, Date end_date, RuleAPI ruleAPI) {
 		logger.debug("SAME MANAGER MAP SIZE= "+rule_manager_emplist_map.size());
 		if(rule_manager_emplist_map.size() > 0) {
+			Map<Rule,Map<Employee,Map<Employee,Integer>>> ruleMgrEmpRankMap = new HashMap<>();
 			for(Map.Entry<Rule, Map<Employee, List<Employee>>> entry : rule_manager_emplist_map.entrySet()) {
+				Map<Employee,Map<Employee,Integer>> mgrEmpRankMap = new HashMap<>();
 				Rule rule = entry.getKey();
 				logger.debug("MAP RULE NAME= "+rule.getRuleName());
 				Map<Employee, List<Employee>> mgr_emplist_map = entry.getValue();
 				for(Map.Entry<Employee, List<Employee>> entry2 : mgr_emplist_map.entrySet()) {
+					Map<Employee, Integer> empRankMap = new HashMap<>();
 					Employee manager = entry2.getKey();
 					logger.debug("MANAGER NAME= "+manager.getEmployeeName());
 					List<Employee> empList = entry2.getValue();
 					for(Employee emp : empList) {
 						logger.debug("QUALIFIED EMP NAME= "+emp.getEmployeeName());
 						
+					}
+					empRankMap = doRank(rule,empList,start_date,end_date,ruleAPI);
+					if(empRankMap.size()>0) {
+						mgrEmpRankMap.put(manager, empRankMap);
+					}
+				}
+				ruleMgrEmpRankMap.put(rule, mgrEmpRankMap);
+			}
+			
+			logger.debug("PRINTING RULE MANAGER EMP LIST MAP FOR START DATE= "+start_date+" AND END DATE= "+end_date);
+			for(Map.Entry<Rule, Map<Employee, Map<Employee, Integer>>> map : ruleMgrEmpRankMap.entrySet()) {
+				logger.debug("RULE NAME= "+map.getKey().getRuleName());
+				for(Map.Entry<Employee,Map<Employee,Integer>> map2: map.getValue().entrySet()) {
+					logger.debug("FOR MANAGER= "+map2.getKey().getEmployeeName());
+					for(Map.Entry<Employee,Integer> map3 : map2.getValue().entrySet()) {
+						logger.debug("RANK OF EMPLOYEE= "+map3.getKey().getEmployeeName()+" IS= "+map3.getValue());
 					}
 				}
 			}
@@ -436,14 +580,18 @@ public class CalculateCompAmountSimpRank {
 
 
 	private static void doRankingSameRole(Map<Rule, Map<Role, List<Employee>>> rule_role_emplist_map, Date start_date, Date end_date, RuleAPI ruleAPI) {
-		logger.debug("SAME ROLE MAP SIZE= "+rule_role_emplist_map.size());
-		logger.debug("RULE_ROLE_EMPLIST_MAP = "+rule_role_emplist_map);
+	
 		if(rule_role_emplist_map.size()> 0) {
+			Map<Rule,Map<Role,Map<Employee,Integer>>> ruleRoleEmpRankMap = new HashMap<>();
 			for(Map.Entry<Rule, Map<Role, List<Employee>>> entry : rule_role_emplist_map.entrySet()) {
+				
+				Map<Role,Map<Employee,Integer>> roleEmpRankMap = new HashMap<>();
+				
 				Rule rule = entry.getKey();
 				logger.debug("MAP RULE NAME= "+rule.getRuleName());
 				Map<Role, List<Employee>> role_emplist_map = entry.getValue();
 				for(Map.Entry<Role, List<Employee>> entry2 : role_emplist_map.entrySet()) {
+					Map<Employee, Integer> empRankMap = new HashMap<>();
 					Role role = entry2.getKey();
 					logger.debug("ROLE NAME= "+role.getRoleName());
 					List<Employee> empList = entry2.getValue();
@@ -451,7 +599,23 @@ public class CalculateCompAmountSimpRank {
 						logger.debug("QUALIFIED EMP NAME= "+emp.getEmployeeName());
 						
 					}
-					Map<Employee, Integer> empRankMap = doRank(rule,empList,start_date,end_date,ruleAPI);
+					empRankMap = doRank(rule,empList,start_date,end_date,ruleAPI);
+					if(empRankMap.size()>0) {
+						roleEmpRankMap.put(role, empRankMap);
+					}
+					
+				}
+				ruleRoleEmpRankMap.put(rule, roleEmpRankMap);
+			}
+			
+			logger.debug("PRINTING RULE ROLE EMP LIST MAP FOR START DATE= "+start_date+" AND END DATE= "+end_date);
+			for(Map.Entry<Rule,Map<Role,Map<Employee,Integer>>> map : ruleRoleEmpRankMap.entrySet()) {
+				logger.debug("RULE NAME= "+map.getKey().getRuleName());
+				for(Map.Entry<Role,Map<Employee,Integer>> map2: map.getValue().entrySet()) {
+					logger.debug("FOR ROLE= "+map2.getKey().getRoleName());
+					for(Map.Entry<Employee,Integer> map3 : map2.getValue().entrySet()) {
+						logger.debug("RANK OF EMPLOYEE= "+map3.getKey().getEmployeeName()+" IS= "+map3.getValue());
+					}
 				}
 			}
 		}
@@ -467,10 +631,162 @@ public class CalculateCompAmountSimpRank {
 		String rankingType = ruleSimple.getRankingType();
 		String aggFuncName = ruleSimple.getAggregateFunctions().getFunctionName();
 		String field = ruleSimple.getField();
+		Map<Employee, Double> empValMap = new HashMap<>();
+		for(Employee emp : empList) {
+			double value = getValueOfEmp(aggFuncName, field,emp,start_date,end_date,rule);
+			if(value != 0) {
+				empValMap.put(emp, value);
+			}
+			
+		}
+		logger.debug("---PRINTING EMP VAL MAP--- ");
+		logger.debug("FOR START DATE= "+start_date+" AND END DATE= "+end_date+" AND RULE= "+rule.getRuleName());
+		logger.debug(empValMap);
 		
-		
-		
+		if(aggFuncName.equals("max")) {
+			int rank=1;
+			Set<Entry<Employee, Double>> set = empValMap.entrySet();
+	        List<Entry<Employee, Double>> list = new ArrayList<Entry<Employee, Double>>(set);
+	        Collections.sort( list, new Comparator<Map.Entry<Employee, Double>>()
+	        {
+	            public int compare( Map.Entry<Employee, Double> o1, Map.Entry<Employee, Double> o2 )
+	            {
+	                return (o2.getValue()).compareTo( o1.getValue() );
+	            }
+	        } );
+	        logger.debug("SORTED MAX MAP: ");
+	        for(Map.Entry<Employee, Double> entry:list){
+	            logger.debug(entry.getKey()+" ==== "+entry.getValue());
+	            empRankMap.put(entry.getKey(), rank);
+	            rank=rank+1;
+	        }
+		}
+		else if(aggFuncName.equals("min")) {
+			int rank=1;
+			Set<Entry<Employee, Double>> set = empValMap.entrySet();
+	        List<Entry<Employee, Double>> list = new ArrayList<Entry<Employee, Double>>(set);
+	        Collections.sort( list, new Comparator<Map.Entry<Employee, Double>>()
+	        {
+	            public int compare( Map.Entry<Employee, Double> o1, Map.Entry<Employee, Double> o2 )
+	            {
+	                return (o1.getValue()).compareTo( o2.getValue() );
+	            }
+	        } );
+	        logger.debug("SORTED MIN MAP: ");
+	        for(Map.Entry<Employee, Double> entry:list){
+	            logger.debug(entry.getKey()+" ==== "+entry.getValue());
+	            empRankMap.put(entry.getKey(), rank);
+	            rank=rank+1;
+	        }
+		}
+		//for sum
+		else {
+			
+		}
 		return empRankMap;
+	}
+
+
+
+
+	private static double getValueOfEmp(String aggFuncName, String field, Employee emp, Date start_date, Date end_date, Rule rule) {
+		logger.debug("in getValueOfEmp method");
+		logger.debug("employee= "+emp);
+		logger.debug("start date= "+start_date);
+		logger.debug("end date= "+end_date);
+		logger.debug("rule name= "+rule.getRuleName());
+		logger.debug("aggFuncName= "+aggFuncName+" and field= "+field);
+		double value=0;
+		if(aggFuncName.equals("max")) {
+			for(Map.Entry<Employee, Map<Rule,Map<Map<Date,Date>,Map<String,Integer>>>> entry_max : max_rule_output_val_emp_map.entrySet()) {
+				Employee key_emp = entry_max.getKey();
+				if(key_emp == emp) {
+					logger.debug("emps match");
+					
+					for(Map.Entry<Rule,Map<Map<Date,Date>,Map<String,Integer>>> entry_rule_max : entry_max.getValue().entrySet()) {
+						Rule keyRule = entry_rule_max.getKey();
+						logger.debug("key rule name= "+keyRule.getRuleName());
+						if(keyRule.getRuleName().equals(rule.getRuleName())) {
+							logger.debug("rules match");
+							for(Map.Entry<Map<Date,Date>,Map<String,Integer>> dateMaxValueEntry : entry_rule_max.getValue().entrySet()) {
+								Map<Date,Date> keyDateMap = dateMaxValueEntry.getKey();
+								for(Map.Entry<Date, Date> dateEntry : keyDateMap.entrySet()) {
+									if(dateEntry.getKey().equals(start_date) && dateEntry.getValue().equals(end_date)) {
+										logger.debug("dates match");
+										Map<String,Integer> map = dateMaxValueEntry.getValue();
+										if(field.equals("Quantity")) {
+											value= map.get("MaxQty");
+										}else {
+											value= map.get("MaxOrderTotal");
+										}
+									}else {
+										logger.debug("dates dont match");
+									}
+								}
+							}
+						}else {
+							logger.debug("rules dont match");
+						}
+					}
+				}
+			}
+			
+		}
+		else if(aggFuncName.equals("min")) {
+			for(Map.Entry<Employee, Map<Rule,Map<Map<Date,Date>,Map<String,Integer>>>> entry_min : min_rule_output_val_emp_map.entrySet()) {
+				Employee key_emp = entry_min.getKey();
+				if(key_emp == emp) {
+					for(Map.Entry<Rule,Map<Map<Date,Date>,Map<String,Integer>>> entry_rule_min : entry_min.getValue().entrySet()) {
+						Rule keyRule = entry_rule_min.getKey();
+						if(keyRule == rule) {
+							for(Map.Entry<Map<Date,Date>,Map<String,Integer>> dateMinValueEntry : entry_rule_min.getValue().entrySet()) {
+								Map<Date,Date> keyDateMap = dateMinValueEntry.getKey();
+								for(Map.Entry<Date, Date> dateEntry : keyDateMap.entrySet()) {
+									if(dateEntry.getKey().equals(start_date) && dateEntry.getValue().equals(end_date)) {
+										Map<String,Integer> map = dateMinValueEntry.getValue();
+										if(field.equals("Quantity")) {
+											value= map.get("MinQty");
+										}else {
+											value= map.get("MinOrderTotal");
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		else {
+			//for sum
+			for(Map.Entry<Employee, Map<Rule,Map<Map<Date,Date>,List<List<Double>>>>> entry_sum : emp_rule_date_ordTotal_qty_map.entrySet()) {
+				Employee key_emp = entry_sum.getKey();
+				if(key_emp == emp) {
+					for(Map.Entry<Rule,Map<Map<Date,Date>,List<List<Double>>>> entry_rule_sum : entry_sum.getValue().entrySet()) {
+						Rule keyRule = entry_rule_sum.getKey();
+						if(keyRule == rule) {
+							for(Map.Entry<Map<Date,Date>,List<List<Double>>> dateSumValueEntry : entry_rule_sum.getValue().entrySet()) {
+								Map<Date,Date> keyDateMap = dateSumValueEntry.getKey();
+								for(Map.Entry<Date, Date> dateEntry : keyDateMap.entrySet()) {
+									if(dateEntry.getKey().equals(start_date) && dateEntry.getValue().equals(end_date)) {
+										List<List<Double>> listVal = dateSumValueEntry.getValue();
+										for(List<Double> val : listVal) {
+											if(field.equals("Order Total")) {
+												value= val.get(0);
+											}else {
+												value= val.get(1);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		logger.debug("value to be returned= "+value);
+		return value;
 	}
 
 
