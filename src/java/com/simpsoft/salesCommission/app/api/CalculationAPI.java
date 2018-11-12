@@ -1121,6 +1121,7 @@ public class CalculationAPI {
 				simple.setEmployee(calculationSimple.getEmployee());
 				simple.setRule(calculationSimple.getRule());
 				simple.setDummyCalcInternal(dummyCalcInt);
+				simple.setSuccessFlag(true);
 				List<CalcDetailsOrderLineItems> calcDetailsOrderLineItems = new ArrayList<>();
 				for(Map.Entry<Employee, Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>>> entry_main : empRuleDateSplitMap.entrySet()) {
 					if(entry_main.getKey().getId() == calculationSimple.getEmployee().getId()) {
@@ -1132,9 +1133,10 @@ public class CalculationAPI {
 								Map<Date,Date> datesMap = dateSplitMap.getKey();
 								
 								for(Map.Entry<Date, Date> date : datesMap.entrySet()) {
+									logger.debug("RULE CALC START DATE= "+date.getKey());
+									logger.debug("RULE CALC END DATE= "+date.getValue());
 									if(date.getKey().equals(calculationSimple.getCalStartDate())&& date.getValue().equals(calculationSimple.getCalEndDate())) {
-										logger.debug("RULE CALC START DATE= "+date.getKey());
-										logger.debug("RULE CALC END DATE= "+date.getValue());
+										logger.debug("DATES MATCH");
 										Map<OrderLineItemsSplit, Boolean> datesMapVal = dateSplitMap.getValue();
 										for(Map.Entry<OrderLineItemsSplit, Boolean> mapEntry : datesMapVal.entrySet()) {
 											CalcDetailsOrderLineItems calcDetailsOrderLineItem = new CalcDetailsOrderLineItems();
@@ -1152,6 +1154,8 @@ public class CalculationAPI {
 											
 											calcDetailsOrderLineItems.add(calcDetailsOrderLineItem);
 										}
+									}else {
+										logger.debug("DATES DONT MATCH");
 									}
 									
 									

@@ -90,6 +90,7 @@ public class CalculateCompAmountSimpleInd {
 		
 //		String sDate2 = args[1];
 //		logger.debug("eDATE= "+sDate2);
+		
 		 endDate=new SimpleDateFormat("dd/MM/yyyy").parse(sDate2);
 		logger.debug("END DATE= "+endDate);
 		
@@ -546,7 +547,7 @@ public class CalculateCompAmountSimpleInd {
 									for(Map.Entry<Rule, List<Double>> entry : rule_output_map.entrySet()) {
 										Rule rule= entry.getKey();
 										if(rule == satisfiedRule) {
-											int count_loop = 0;
+//											int count_loop = 0;
 												List<Double> values = entry.getValue();
 												for(Double value : values) {
 													
@@ -569,35 +570,91 @@ public class CalculateCompAmountSimpleInd {
 														Rule keyRule = rule_dates_map.getKey();
 														if(keyRule == rule) {
 															CalculationSimple calculationSimple = new CalculationSimple();
-															Date ruleCalcStartDate=new Date();
-															Date ruleCalcEndDate=new Date();
+//															Date ruleCalcStartDate=new Date();
+//															Date ruleCalcEndDate=new Date();
 															Map<Date,Date> dates = rule_dates_map.getValue();
-															Object startDate_key = dates.keySet().toArray()[count_loop];
-															Object endDate_val = dates.get(startDate_key);
+//															Object startDate_key = dates.keySet().toArray()[count_loop];
+//															Object endDate_val = dates.get(startDate_key);
+//																
+//																ruleCalcStartDate = (Date) startDate_key;
+//																ruleCalcEndDate = (Date) endDate_val;
+																for(Map.Entry<Date, Date> date : dates.entrySet()) {
+																	Date ruleCalcStartDate= date.getKey();
+																	Date ruleCalcEndDate = date.getValue();
+																	
+																	for(Map.Entry<Employee,  Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>>> entry1 : empRuleDateSplitMap.entrySet()) {
+																		logger.debug("EMP NAME= "+entry1.getKey().getEmployeeName());
+																		Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> entryVal = entry1.getValue();
+																		for(Map.Entry<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> entry2 : entryVal.entrySet()) {
+																			logger.debug("RULE NAME= "+entry2.getKey().getRuleName());
+																			if(entry2.getKey().getRuleName().equals(rule.getRuleName())) {
+																				Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>> entry2Val = entry2.getValue();
+																				for(Map.Entry<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>> entry3 : entry2Val.entrySet()) {
+																					Map<Date,Date> datesMap = entry3.getKey();
+																					Map<OrderLineItemsSplit, Boolean> datesMapVal= entry3.getValue();
+																					for(Map.Entry<Date, Date> date1 : datesMap.entrySet()) {
+																						logger.debug("START DATE= "+date1.getKey());
+																						logger.debug("END DATE= "+date1.getValue());
+																						if(date1.getKey().equals(ruleCalcStartDate) && date1.getValue().equals(ruleCalcEndDate)) {
+																							int flag=0;
+																							for(Map.Entry<OrderLineItemsSplit, Boolean> map : datesMapVal.entrySet()) {
+																								logger.debug("ORDER SPLIT LINE ITEM ID= "+map.getKey().getId());
+																								logger.debug("SATISFIED= "+map.getValue());
+																								if(map.getValue() == true) {
+																									flag+=1;
+																								}
+																							}
+																							
+																							if(flag > 0 ) {
+																								logger.debug("---DATA TO BE SAVED---");
+																								logger.debug("EMP ID = "+emp.getId());
+																								logger.debug("RULE ID= "+rule.getId());
+																								logger.debug("CALC START DATE= "+ruleCalcStartDate);
+																								logger.debug("CALC END DATE= "+ruleCalcEndDate);
+																								logger.debug("COMP AMT= "+compAmt);
+																								
+																								calculationSimple.setCalStartDate(ruleCalcStartDate);
+																								calculationSimple.setCalEndDate(ruleCalcEndDate);
+																								calculationSimple.setCompensationAmount((double) compAmt);
+																								calculationSimple.setDummyCalcInternal(false);
+																								calculationSimple.setRule(satisfiedRule);
+																								calculationSimple.setEmployee(emp);
+																								
+																								calcSimpList.add(calculationSimple);
+																								logger.debug("CALC SIMP LIST= "+ calcSimpList);
+																							}
+																							
+																						}
+																						
+																					}
+																				}
+																			}
+																		
+																		}
+																	}
+																	
+																	
+																}
 																
-																ruleCalcStartDate = (Date) startDate_key;
-																ruleCalcEndDate = (Date) endDate_val;
 																
+//																logger.debug("---DATA TO BE SAVED---");
+//																logger.debug("EMP ID = "+emp.getId());
+//																logger.debug("RULE ID= "+rule.getId());
+//																logger.debug("CALC START DATE= "+ruleCalcStartDate);
+//																logger.debug("CALC END DATE= "+ruleCalcEndDate);
+//																logger.debug("COMP AMT= "+compAmt);
+//																
+//																calculationSimple.setCalStartDate(ruleCalcStartDate);
+//																calculationSimple.setCalEndDate(ruleCalcEndDate);
+//																calculationSimple.setCompensationAmount((double) compAmt);
+//																calculationSimple.setDummyCalcInternal(false);
+//																calculationSimple.setRule(satisfiedRule);
+//																calculationSimple.setEmployee(emp);
+//																
+//																calcSimpList.add(calculationSimple);
+//																logger.debug("CALC SIMP LIST= "+ calcSimpList);
 																
-																
-																logger.debug("---DATA TO BE SAVED---");
-																logger.debug("EMP ID = "+emp.getId());
-																logger.debug("RULE ID= "+rule.getId());
-																logger.debug("CALC START DATE= "+ruleCalcStartDate);
-																logger.debug("CALC END DATE= "+ruleCalcEndDate);
-																logger.debug("COMP AMT= "+compAmt);
-																
-																calculationSimple.setCalStartDate(ruleCalcStartDate);
-																calculationSimple.setCalEndDate(ruleCalcEndDate);
-																calculationSimple.setCompensationAmount((double) compAmt);
-																calculationSimple.setDummyCalcInternal(false);
-																calculationSimple.setRule(satisfiedRule);
-																calculationSimple.setEmployee(emp);
-																
-																calcSimpList.add(calculationSimple);
-																logger.debug("CALC SIMP LIST= "+ calcSimpList);
-																
-																count_loop+=1;
+//																count_loop+=1;
 															
 														}
 														
