@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -73,9 +74,20 @@ public class CalculateCompAmountSimpRank {
 	private static HashMap<Long,HashMap<Rule, List<List<Double>>>> empAssg_rule_ordTotal_qty = null;
 	private static Map<Long, List<Rule>> rule_ruleassg = new HashMap<Long, List<Rule>>();
 	private static HashMap<Rule, List<Double>> rule_output_map = null;
+	
+	private static Map<Rule, Map<Map<Date,Date>, Double>> rule_date_output_map = null;
 	private static Map<Map<Rule, Map<Date,Date>>, List<Employee>> finalEmpRuleDatesMap = new HashMap<>();
 	private static Map<Employee,Map<Rule,Map<Map<Date,Date>, Map<String,Integer>>>> max_rule_output_val_emp_map = new HashMap<>();
 	private static Map<Employee,Map<Rule,Map<Map<Date,Date>, Map<String,Integer>>>> min_rule_output_val_emp_map = new HashMap<>();
+//	private static Map<Employee, Map<Rule, Map<Map<Date,Date>, Object>>> emp_rule_date_comp_amt_map = new HashMap<>();
+	private static List<CalculationSimple> calcSimpList = new ArrayList<>();
+	
+	
+	private static Map<Employee, Map<Rule, List<Map<Map<Date,Date>, Object>>>> emp_rule_date_comp_amt_map = new HashMap<>();
+	
+	private static Map<Employee,Map<Rule, Map<Map<Date,Date>, Map<OrderLineItemsSplit,Boolean>>>> empRuleDateSplitMap = new HashMap<>();
+	private static Map<Map<Date,Date>, Map<OrderLineItemsSplit,Boolean>> dateSplitMap  = null;
+	
 	
 	public static void main(String[] args) throws ParseException, ScriptException {
 		
@@ -214,35 +226,85 @@ public class CalculateCompAmountSimpRank {
 		// find all the employees to whom a particular satisfied rule is applied in between a particular start and end date
 		logger.debug("----EMP RULE FREQ MAP EMPLIST----");
 		for(Map.Entry<Employee, Map<Rule, Map<Date,Date>>> entry : emp_rule_freq_map.entrySet()) {
-			List<Employee> empList = new ArrayList<>();
-			logger.debug("ENTRY KEY EMP NAME= "+ entry.getKey() );
-			
+//			List<Employee> empList = new ArrayList<>();
+			logger.debug("ENTRY KEY EMP NAME= "+ entry.getKey().getEmployeeName() );
+			Employee empMain = entry.getKey();
 			Map<Rule,Map<Date,Date>> ruleDatesMap = entry.getValue();
 			for(Map.Entry<Rule, Map<Date,Date>> entry_main : ruleDatesMap.entrySet()) {
-				logger.debug("ENTRY RULE NAME= "+entry_main.getKey().getRuleName());
+				Rule ruleMain = entry_main.getKey();
+				logger.debug("ENTRY RULE NAME= "+ruleMain.getRuleName());
 				logger.debug("ENTRY MAP DETAILS= "+entry_main.getValue());
+				
+				
+				for(Map.Entry<Date, Date> datesMain : entry_main.getValue().entrySet() ) {
+					List<Employee> empList = new ArrayList<>();
+					Date startDateMain = datesMain.getKey();
+					Date endDateMain = datesMain.getValue();
+					
+					
 				for(Map.Entry<Employee, Map<Rule,Map<Date,Date>>> entry2: emp_rule_freq_map.entrySet()) {
-					if(entry.getKey().getEmployeeName() != entry2.getKey().getEmployeeName()) {
-						logger.debug("ENTRY2 KEY EMP NAME= "+ entry.getKey() );
-						logger.debug("ENTRY2 MAP DETAILS= "+entry2.getValue());
+					Employee empSec = entry2.getKey();
+				
+					//compare emps
+					if(!empMain.getEmployeeName().equals(empSec.getEmployeeName())) {
+						logger.debug("ENTRY2 KEY EMP NAME= "+ empSec.getEmployeeName() );
+						
 						Map<Rule,Map<Date,Date>> ruleDatesMap2 = entry2.getValue();
 						for(Map.Entry<Rule, Map<Date,Date>> entry2_main : ruleDatesMap2.entrySet()) {
-							if(entry_main.getValue() == entry2_main.getValue()) {
-								logger.debug("MAP DETAILS= "+entry_main.getValue());
-								empList.add(entry2.getKey());
-							}
+							
+							Rule ruleSec = entry2_main.getKey();
+							logger.debug("ENTRY2 RULE NAME= "+ruleSec.getRuleName());
+							//compare rules
+								if(ruleSec.getRuleName().equals(ruleMain.getRuleName())) {
+									
+									Map<Rule, Map<Date,Date>> rule_date_map = new HashMap<>();
+									Map<Date,Date> dateMap = new HashMap<>();
+									
+									logger.debug("ENTRY2 MAP DETAILS= "+entry2_main.getValue());
+									
+//									if(entry_main.getValue() == entry2_main.getValue()) {
+//										
+//										logger.debug("MAP DETAILS= "+entry_main.getValue());
+//										empList.add(entry2.getKey());
+//									}
+									
+									
+										
+										dateMap.put(startDateMain, endDateMain);
+										rule_date_map.put(ruleSec, dateMap);
+										for(Map.Entry<Date, Date> datesSec : entry2_main.getValue().entrySet()) {
+											Date startDateSec = datesSec.getKey();
+											Date endDateSec = datesSec.getValue();
+											
+											if(startDateSec.equals(startDateMain) && endDateSec.equals(endDateMain)) {
+												empList.add(empSec);
+											}
+										}
+										empList.add(entry.getKey());
+									}
+									
+									
+									
+								}
+							
+							
+							
+							
 						}
 						
 					}
+					rule_date_emp_map.put(entry.getValue(), empList);
 				}
 			}
 			
-			empList.add(entry.getKey());
+//			empList.add(entry.getKey());
 			
-			for(Employee emp : empList) {
-				logger.debug("EMP NAME= "+emp.getEmployeeName());
-			}
-			rule_date_emp_map.put(entry.getValue(), empList);
+//			for(Employee emp : empList) {
+//				logger.debug("EMP NAME= "+emp.getEmployeeName());
+//			}
+//			rule_date_emp_map.put(entry.getValue(), empList);
+			logger.debug("PRINTING RULE DATE EMP LIST MAP");
+			logger.debug(rule_date_emp_map);
 		}
 		
 		logger.debug("---PRINTING THE ELEMENTS OF RULE DATE EMP MAP ----");
@@ -302,7 +364,11 @@ public class CalculateCompAmountSimpRank {
 			
 			
 		}
+		logger.debug("PRINTING FINaL EMP RULE DATES MAP");
+		logger.debug(finalEmpRuleDatesMap);
 		Map<Map<Rule,Map<Date,Date>>, List<Employee>> finalEmpRuleDatesMap_2 = createMap(finalEmpRuleDatesMap);
+		logger.debug("PRINTING UNIQUE FINAL EMP RULE DATES MAP");
+		logger.debug(finalEmpRuleDatesMap_2);
 		logger.debug("---PRINTING THE ELEMENTS OF FINAL RULE DATE EMP MAP ----");
 		for(Map.Entry<Map<Rule,Map<Date,Date>>, List<Employee>> entry : finalEmpRuleDatesMap_2.entrySet()) {
 			Map<Rule,Map<Date,Date>> ruleDateMap = entry.getKey();
@@ -406,7 +472,7 @@ public class CalculateCompAmountSimpRank {
 				
 			}
 		}
-		
+		calcAPI.saveSimpRankList(startDate, endDate, calcSimpList, empRuleDateSplitMap,true);
 	}
 
 	
@@ -570,9 +636,55 @@ public class CalculateCompAmountSimpRank {
 					logger.debug("FOR MANAGER= "+map2.getKey().getEmployeeName());
 					for(Map.Entry<Employee,Integer> map3 : map2.getValue().entrySet()) {
 						logger.debug("RANK OF EMPLOYEE= "+map3.getKey().getEmployeeName()+" IS= "+map3.getValue());
+						logger.debug("---RETRIEVING COMP AMT VALUE----");
+						for(Map.Entry<Employee, Map<Rule,List<Map<Map<Date,Date>,Object>>>> map4 : emp_rule_date_comp_amt_map.entrySet()) {
+							if(map4.getKey() == map3.getKey()) {
+								for(Map.Entry<Rule,List<Map<Map<Date,Date>,Object>>> map5 : map4.getValue().entrySet()) {
+									if(map5.getKey().getRuleName().equals(map.getKey().getRuleName())) {
+										List<Map<Map<Date,Date>,Object>> mapList = map5.getValue();
+										for(Map<Map<Date,Date>,Object> mapEntry : mapList) {
+											for(Map.Entry<Map<Date,Date>,Object> map6: mapEntry.entrySet()) {
+												for(Map.Entry<Date, Date> map7 : map6.getKey().entrySet()) {
+													if(map7.getKey().equals(start_date) && map7.getValue().equals(end_date)) {
+														logger.debug("COMPENSATION TO BE PROVIDED= "+map6.getValue());
+														
+														CalculationSimple calculationSimple = new CalculationSimple();
+														calculationSimple.setCalStartDate(start_date);
+														calculationSimple.setCalEndDate(end_date);
+														
+														calculationSimple.setDummyCalcInternal(true);
+														calculationSimple.setRule(map5.getKey());
+														calculationSimple.setEmployee(map4.getKey());
+														//rank of employee
+														calculationSimple.setRuleOutput(String.valueOf(map3.getValue()));
+														//get success flag
+														boolean successFlag= getSuccessFlag(map5.getKey(),map3.getValue(),ruleAPI);
+														calculationSimple.setSuccessFlag(successFlag);
+														if(successFlag == true) {
+															calculationSimple.setCompensationAmount((double)map6.getValue());
+														}else {
+															calculationSimple.setCompensationAmount(0);
+														}
+														
+														calcSimpList.add(calculationSimple);
+													}
+												}
+												
+											}
+										}
+											
+										
+										
+									}
+								}
+							}
+						}
 					}
 				}
 			}
+			
+			logger.debug("PRINTING EMP RULE DATE COMP AMT MAP");
+			logger.debug(emp_rule_date_comp_amt_map);
 		}
 	}
 
@@ -595,6 +707,11 @@ public class CalculateCompAmountSimpRank {
 					Role role = entry2.getKey();
 					logger.debug("ROLE NAME= "+role.getRoleName());
 					List<Employee> empList = entry2.getValue();
+					
+					Set<Employee> uniqueEmpList = new HashSet<>();
+					uniqueEmpList.addAll(empList);
+					empList.clear();
+					empList.addAll(uniqueEmpList);
 					for(Employee emp : empList) {
 						logger.debug("QUALIFIED EMP NAME= "+emp.getEmployeeName());
 						
@@ -615,20 +732,87 @@ public class CalculateCompAmountSimpRank {
 					logger.debug("FOR ROLE= "+map2.getKey().getRoleName());
 					for(Map.Entry<Employee,Integer> map3 : map2.getValue().entrySet()) {
 						logger.debug("RANK OF EMPLOYEE= "+map3.getKey().getEmployeeName()+" IS= "+map3.getValue());
+						logger.debug("---RETRIEVING COMP AMT VALUE----");
+						for(Map.Entry<Employee, Map<Rule,List<Map<Map<Date,Date>,Object>>>> map4 : emp_rule_date_comp_amt_map.entrySet()) {
+							//comparing emps
+							if(map4.getKey() == map3.getKey()) {
+								for(Map.Entry<Rule,List<Map<Map<Date,Date>,Object>>> map5 : map4.getValue().entrySet()) {
+									//comparing rules
+									if(map5.getKey().getRuleName().equals(map.getKey().getRuleName())) {
+										List<Map<Map<Date,Date>,Object>> mapList = map5.getValue();
+										for(Map<Map<Date,Date>,Object> mapEntry : mapList) {
+											for(Map.Entry<Map<Date,Date>,Object> map6: mapEntry.entrySet()) {
+												for(Map.Entry<Date, Date> map7 : map6.getKey().entrySet()) {
+													if(map7.getKey().equals(start_date) && map7.getValue().equals(end_date)) {
+														logger.debug("COMPENSATION TO BE PROVIDED= "+map6.getValue());
+														CalculationSimple calculationSimple = new CalculationSimple();
+														calculationSimple.setCalStartDate(start_date);
+														calculationSimple.setCalEndDate(end_date);
+														calculationSimple.setDummyCalcInternal(true);
+														calculationSimple.setRule(map5.getKey());
+														calculationSimple.setEmployee(map4.getKey());
+														//rank of employee
+														calculationSimple.setRuleOutput(String.valueOf(map3.getValue()));
+														//get success flag
+														boolean successFlag= getSuccessFlag(map5.getKey(),map3.getValue(),ruleAPI);
+														calculationSimple.setSuccessFlag(successFlag);
+														if(successFlag == true) {
+															calculationSimple.setCompensationAmount((double)map6.getValue());
+														}else {
+															calculationSimple.setCompensationAmount(0);
+														}
+														
+														calcSimpList.add(calculationSimple);
+													}
+												}
+												
+											}
+										}
+											
+										
+										
+									}
+								}
+								
+							}
+						}
 					}
 				}
+				
 			}
+			
+			
+			logger.debug("PRINTING EMP RULE DATE COMP AMT MAP");
+			logger.debug(emp_rule_date_comp_amt_map);
+			
+			
 		}
 	}
 
 
 
 
-	private static Map<Employee, Integer> doRank(Rule rule, List<Employee> empList, Date start_date, Date end_date, RuleAPI ruleAPI) {
-		Map<Employee, Integer> empRankMap = new HashMap<>();
+	private static boolean getSuccessFlag(Rule rule, Integer rank, RuleAPI ruleAPI) {
 		RuleSimple ruleSimple = ruleAPI.findSimpleRule(rule.getId());
 		int rankCount = ruleSimple.getRankCount();
 		String rankingType = ruleSimple.getRankingType();
+		
+		if(rankingType.equals("Number")) {
+			if(rank<=rankCount) {
+				return true;
+			}
+		}
+		//for percentage
+		else {
+			
+		}
+		return false;
+	}
+
+
+	private static Map<Employee, Integer> doRank(Rule rule, List<Employee> empList, Date start_date, Date end_date, RuleAPI ruleAPI) {
+		Map<Employee, Integer> empRankMap = new HashMap<>();
+		RuleSimple ruleSimple = ruleAPI.findSimpleRule(rule.getId());
 		String aggFuncName = ruleSimple.getAggregateFunctions().getFunctionName();
 		String field = ruleSimple.getField();
 		Map<Employee, Double> empValMap = new HashMap<>();
@@ -711,6 +895,8 @@ public class CalculateCompAmountSimpRank {
 							for(Map.Entry<Map<Date,Date>,Map<String,Integer>> dateMaxValueEntry : entry_rule_max.getValue().entrySet()) {
 								Map<Date,Date> keyDateMap = dateMaxValueEntry.getKey();
 								for(Map.Entry<Date, Date> dateEntry : keyDateMap.entrySet()) {
+									logger.debug("TEST START DATE= "+dateEntry.getKey());
+									logger.debug("TEST END DATE= "+dateEntry.getValue());
 									if(dateEntry.getKey().equals(start_date) && dateEntry.getValue().equals(end_date)) {
 										logger.debug("dates match");
 										Map<String,Integer> map = dateMaxValueEntry.getValue();
@@ -810,7 +996,7 @@ public class CalculateCompAmountSimpRank {
 		List<Rule> rankRuleList = entry.getValue();
 		splitLineItemMap = new HashMap<>();
 		rule_date_ordTotal_qty_map = new HashMap<>();
-		splitQualMap = new HashMap<>();
+//		splitQualMap = new HashMap<>();
 		qualifiedRuleListOfEmp = new ArrayList<>();
 		listRules = new ArrayList<Rule>();
 		ruleMaxValuesMap = new HashMap<>();
@@ -841,9 +1027,15 @@ public class CalculateCompAmountSimpRank {
 		
 		
 		if(rankRuleList.size() > 0) {
+			Map<Rule, List<Map<Map<Date,Date>, Object>>> ruleDateObjectMap = new HashMap<>();
+			
+			Map<Rule, Map<Map<Date,Date>, Map<OrderLineItemsSplit,Boolean>>> ruleDateSplitMap = new HashMap<>();
+			
 			
 			// for each rule find its corresponding start and end dates
 			for(Rule rule : rankRuleList) {
+				List<Map<Map<Date,Date>, Object>> mapList = new ArrayList<>();
+				dateSplitMap = new HashMap<>();
 				
 				Date ruleCalcStartDate=new Date();
 				Date ruleCalcEndDate=new Date();
@@ -884,7 +1076,13 @@ public class CalculateCompAmountSimpRank {
 									logger.debug("SIZE OF QUALIFIED LINE ITEMS LIST FOR RULE ="+keyRule.getRuleName()+" AND EMP= "+emp.getEmployeeName()+"IS = "
 									+ qualifiedLineItemsList.size());
 									if(!qualifiedLineItemsList.isEmpty()) {
-										compareLineItem(calcAPI, orderAPI, ruleAPI,ruleAssAPI, qualifiedLineItemsList, rule,emp,ruleCalcStartDate,ruleCalcEndDate);
+										 Map<Map<Date,Date>, Object> map=  new HashMap<>();
+										 map=compareLineItem(calcAPI, orderAPI, ruleAPI,ruleAssAPI, qualifiedLineItemsList, rule,emp,ruleCalcStartDate,ruleCalcEndDate);
+										 mapList.add(map);
+										 if(dateSplitMap != null) {
+											 ruleDateSplitMap.put(rule, dateSplitMap);
+										 }
+										 
 									}
 									
 									
@@ -902,15 +1100,45 @@ public class CalculateCompAmountSimpRank {
 					
 				}
 				
-				
+				 ruleDateObjectMap.put(rule, mapList);
 			}
+			if(ruleDateObjectMap != null) {
+				emp_rule_date_comp_amt_map.put(emp, ruleDateObjectMap);
+//				logger.debug("PRINTING EMP WITH RULE DATE COMP LIST");
+//				logger.debug(emp_rule_date_comp_amt_map);
+			}
+			if(ruleDateSplitMap != null) {
+				empRuleDateSplitMap.put(emp, ruleDateSplitMap);
+				logger.debug("PRINTING EMP RULE DATE SPLIT MAP");
+				for(Map.Entry<Employee,  Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>>> entry1 : empRuleDateSplitMap.entrySet()) {
+					logger.debug("EMP NAME= "+entry1.getKey().getEmployeeName());
+					Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> entryVal = entry1.getValue();
+					for(Map.Entry<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> entry2 : entryVal.entrySet()) {
+						logger.debug("RULE NAME= "+entry2.getKey().getRuleName());
+						Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>> entry2Val = entry2.getValue();
+						for(Map.Entry<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>> entry3 : entry2Val.entrySet()) {
+							Map<Date,Date> datesMap = entry3.getKey();
+							Map<OrderLineItemsSplit, Boolean> datesMapVal= entry3.getValue();
+							for(Map.Entry<Date, Date> date : datesMap.entrySet()) {
+								logger.debug("START DATE= "+date.getKey());
+								logger.debug("END DATE= "+date.getValue());
+								for(Map.Entry<OrderLineItemsSplit, Boolean> map : datesMapVal.entrySet()) {
+									logger.debug("ORDER SPLIT LINE ITEM ID= "+map.getKey().getId());
+									logger.debug("SATISFIED= "+map.getValue());
+								}
+							}
+						}
+					}
+				}
+			}
+			
 		}
 		
 		
 		
 	}
 
-	private static void compareLineItem(CalculationAPI calcAPI, OrderAPI orderAPI, RuleAPI ruleAPI,
+	private static Map<Map<Date, Date>, Object> compareLineItem(CalculationAPI calcAPI, OrderAPI orderAPI, RuleAPI ruleAPI,
 			RuleAssignmentAPI ruleAssAPI, List<OrderLineItems> qualifiedLineItemsList, Rule rule, Employee emp, Date ruleCalcStartDate, Date ruleCalcEndDate) throws ScriptException {
 	if(rule.getRuleType().equalsIgnoreCase("simple")){
 			
@@ -920,6 +1148,10 @@ public class CalculateCompAmountSimpRank {
 				boolean added=false;
 				sum_ordTotal_Qty_list = new ArrayList<>();
 				sum_ordTotal_Qty_list_main =new ArrayList<>();
+				
+				splitQualMap = new HashMap<>();
+//				Map<Map<Date,Date>,Map<OrderLineItemsSplit, Boolean>> dateSplitQualMap = new HashMap<>();
+				
 				
 				double orderTotal=0;
 				double quantity=0;
@@ -956,12 +1188,16 @@ public class CalculateCompAmountSimpRank {
 							if(lineItem == items) {
 								OrderLineItemsSplit lineItemSplit = entryMap.getKey();
 								splitQualMap.put(lineItemSplit, isSatisfied);
+								Map<Date,Date> dateMap = new HashMap<>();
+								dateMap.put(ruleCalcStartDate, ruleCalcEndDate);
+								dateSplitMap.put(dateMap, splitQualMap);
 								break;
 							}
 						}
 					}
 				}
-				logger.debug("FILTEREDLINEITEMSLIST FOR RULE = "+rule.getRuleName()+" AND EMP= "+emp.getEmployeeName());
+				logger.debug("FILTEREDLINEITEMSLIST FOR RULE = "+rule.getRuleName()+" AND EMP= "+emp.getEmployeeName()+"FOR START DATE= "+ruleCalcStartDate
+						+ "AND END DATE= "+ruleCalcEndDate);
 				for(OrderLineItems filteredItem : filteredLineItemsList) {
 					logger.debug("FILTERED LINE ITEM ID= "+filteredItem.getId());
 					
@@ -1344,8 +1580,11 @@ public class CalculateCompAmountSimpRank {
 				}
 				logger.debug(qualifiedRuleListOfEmp.size()+" RULES ARE SATISFIED FOR EMP ID= "+emp.getId());
 				logger.debug("LIST OF SATISFIED RULES FOR EMP ID = "+emp.getId());
+
+				
 				String prevRule = "";
 				for(Rule satisfiedRule : qualifiedRuleListOfEmp) {
+
 					
 					List<CalculationSimple> calcSimpListRule = new ArrayList<>();
 					
@@ -1355,36 +1594,44 @@ public class CalculateCompAmountSimpRank {
 					if(satisfiedRule.getCompensationType().equals("Fixed")) {
 						logger.debug("fixed value= "+ satisfiedRule.getFixedCompValue());
 						logger.debug("COMPENSATION AMOUNT= "+satisfiedRule.getFixedCompValue());
-						for(Map.Entry<Rule, Map<Date,Date>> rule_dates_map : rule_freq_map.entrySet()) {
-							Rule rule1 = rule_dates_map.getKey();
-							if(rule1== satisfiedRule) {
-								Date ruleCalcStartDate1 = new Date();
-								Date ruleCalcEndDate1 = new Date();
-								Map<Date, Date> fixedDates = rule_dates_map.getValue();
-								for(Map.Entry<Date, Date> dateMap : fixedDates.entrySet()) {
-									ruleCalcStartDate1 = dateMap.getKey();
-									ruleCalcEndDate1 = dateMap.getValue();
-								}
-								
-								logger.debug("---DATA TO BE SAVED FOR FIXED RULE---");
-								logger.debug("EMP ID = "+emp.getId());
-								logger.debug("RULE ID= "+rule1.getId());
-								logger.debug("CALC START DATE= "+ruleCalcStartDate1);
-								logger.debug("CALC END DATE= "+ruleCalcEndDate1);
-								logger.debug("COMP AMT= "+satisfiedRule.getFixedCompValue());
-								
-//								CalculationSimple calculationSimple = new CalculationSimple();
-//								calculationSimple.setCalStartDate(ruleCalcStartDate);
-//								calculationSimple.setCalEndDate(ruleCalcEndDate);
-//								calculationSimple.setCompensationAmount((double) satisfiedRule.getFixedCompValue());
-//								calculationSimple.setDummyCalcInternal(false);
-//								calculationSimple.setRule(satisfiedRule);
-//								calculationSimple.setEmployee(emp);
-//								
-//								calcSimpList.add(calculationSimple);
-								break;
-							}
-						}
+						
+						 for(Map.Entry<Employee,Map<Rule, Map<Date,Date>>> emp_rule_dates_map : emp_rule_freq_map.entrySet()) {
+							 logger.debug("in emp rule freq map");
+							 if(emp == emp_rule_dates_map.getKey()) {
+									for(Map.Entry<Rule, Map<Date,Date>> rule_dates_map : rule_freq_map.entrySet()) {
+										Rule rule1 = rule_dates_map.getKey();
+										if(rule1== satisfiedRule) {
+											Date ruleCalcStartDate1 = new Date();
+											Date ruleCalcEndDate1 = new Date();
+											Map<Date, Date> fixedDates = rule_dates_map.getValue();
+											for(Map.Entry<Date, Date> dateMap : fixedDates.entrySet()) {
+												ruleCalcStartDate1 = dateMap.getKey();
+												ruleCalcEndDate1 = dateMap.getValue();
+											}
+											
+											logger.debug("---DATA TO BE SAVED FOR FIXED RULE---");
+											logger.debug("EMP ID = "+emp.getId());
+											logger.debug("RULE ID= "+rule1.getId());
+											logger.debug("CALC START DATE= "+ruleCalcStartDate1);
+											logger.debug("CALC END DATE= "+ruleCalcEndDate1);
+											logger.debug("COMP AMT= "+satisfiedRule.getFixedCompValue());
+											
+											Map<Date,Date> m1 = new HashMap<>();
+											m1.put(ruleCalcStartDate1, ruleCalcEndDate1);
+											Map<Map<Date,Date>, Object> m2 = new HashMap<>();
+											m2.put(m1, satisfiedRule.getFixedCompValue());
+											Map<Rule,Map<Map<Date,Date>, Object>> m3 = new HashMap<>();
+											m3.put(rule, m2);
+											
+											return m2;
+											
+											
+										
+										}
+									}
+							 }
+						 }
+					
 						
 						
 						
@@ -1403,27 +1650,34 @@ public class CalculateCompAmountSimpRank {
 							
 							if(param.equalsIgnoreCase("$RULE_OUTPUT")){							
 								
-								
-//								logger.debug("empAssg_rule_ordTotal_qty size= "+empAssg_rule_ordTotal_qty.size());
+
 								
 								// code for rule output
 								double rule_output=0;
 								RuleSimple ruleSimple = ruleAPI.findSimpleRule(satisfiedRule.getId());
 								String agg_func_name = ruleSimple.getAggregateFunctions().getFunctionName();
+								Map<Map<Date,Date>,Double> date_output_map = new HashMap<>();
+								rule_date_output_map = new HashMap<>();
 								logger.debug("agg_func_name= "+agg_func_name);
 								if(agg_func_name.equals("sum")) {
 									rule_output_map=new HashMap<Rule, List<Double>>();
+									
+									
+									
 									List<Double> rule_output_list = new ArrayList<>();		
 
 									for(Map.Entry<Employee, Map<Rule,Map<Map<Date,Date>,List<List<Double>>>>> entry_sum : emp_rule_date_ordTotal_qty_map.entrySet()) {
 										Employee key_emp = entry_sum.getKey();
 										if(key_emp == emp) {
+											
 											for(Map.Entry<Rule,Map<Map<Date,Date>,List<List<Double>>>> entry_rule_sum : entry_sum.getValue().entrySet()) {
 												Rule keyRule = entry_rule_sum.getKey();
 												if(keyRule == satisfiedRule) {
+													
 													for(Map.Entry<Map<Date,Date>,List<List<Double>>> dateSumValueEntry : entry_rule_sum.getValue().entrySet()) {
 														Map<Date,Date> keyDateMap = dateSumValueEntry.getKey();
 														for(Map.Entry<Date, Date> dateEntry : keyDateMap.entrySet()) {
+															
 															if(dateEntry.getKey().equals(ruleCalcStartDate) && dateEntry.getValue().equals(ruleCalcEndDate)) {
 																logger.debug(dateSumValueEntry.getValue());
 																List<List<Double>> listVal = dateSumValueEntry.getValue();
@@ -1437,11 +1691,16 @@ public class CalculateCompAmountSimpRank {
 																		logger.debug("RULE_OUPTUT_VALUE= "+rule_output);
 																	}
 																	rule_output_list.add(rule_output);
+																	Map<Date,Date> dateMap = new HashMap<>();
+																	dateMap.put(ruleCalcStartDate, ruleCalcEndDate);
+																	
+																	date_output_map.put(dateMap,rule_output);
 																}
 															
 																
 															}
 															rule_output_map.put(keyRule, rule_output_list);
+															rule_date_output_map.put(keyRule, date_output_map);
 														}
 													}
 												}
@@ -1462,6 +1721,8 @@ public class CalculateCompAmountSimpRank {
 													for(Map.Entry<Map<Date,Date>,Map<String,Integer>> dateMaxValueEntry : entry_rule_max.getValue().entrySet()) {
 														Map<Date,Date> keyDateMap = dateMaxValueEntry.getKey();
 														for(Map.Entry<Date, Date> dateEntry : keyDateMap.entrySet()) {
+															
+
 															if(dateEntry.getKey().equals(ruleCalcStartDate) && dateEntry.getValue().equals(ruleCalcEndDate)) {
 																logger.debug(dateMaxValueEntry.getValue());
 																Map<String,Integer> map = dateMaxValueEntry.getValue();
@@ -1474,9 +1735,17 @@ public class CalculateCompAmountSimpRank {
 																	logger.debug("RULE_OUPTUT_VALUE= "+rule_output);
 																}
 																rule_output_list.add(rule_output);
+																Map<Date,Date> dateMap = new HashMap<>();
+																dateMap.put(ruleCalcStartDate, ruleCalcEndDate);
+																
+																date_output_map.put(dateMap,rule_output);
 																
 															}
 															rule_output_map.put(keyRule, rule_output_list);
+															rule_date_output_map.put(keyRule, date_output_map);
+															
+															
+															
 																
 															}
 														}
@@ -1498,6 +1767,7 @@ public class CalculateCompAmountSimpRank {
 													for(Map.Entry<Map<Date,Date>,Map<String,Integer>> dateMinValueEntry : entry_rule_min.getValue().entrySet()) {
 														Map<Date,Date> keyDateMap = dateMinValueEntry.getKey();
 														for(Map.Entry<Date, Date> dateEntry : keyDateMap.entrySet()) {
+															
 															if(dateEntry.getKey().equals(ruleCalcStartDate) && dateEntry.getValue().equals(ruleCalcEndDate)) {
 																logger.debug(dateMinValueEntry.getValue());
 																Map<String,Integer> map = dateMinValueEntry.getValue();
@@ -1510,9 +1780,14 @@ public class CalculateCompAmountSimpRank {
 																	logger.debug("RULE_OUPTUT_VALUE= "+rule_output);
 																}
 																rule_output_list.add(rule_output);
+																Map<Date,Date> dateMap = new HashMap<>();
+																dateMap.put(ruleCalcStartDate, ruleCalcEndDate);
+																
+																date_output_map.put(dateMap,rule_output);
 																
 															}
 															rule_output_map.put(keyRule, rule_output_list);
+															rule_date_output_map.put(keyRule, date_output_map);
 																
 															}
 														}
@@ -1578,84 +1853,91 @@ public class CalculateCompAmountSimpRank {
 						
 							}
 						}
-						logger.debug("rule output map size= "+ rule_output_map.size());
-						if(rule_output_map.size() > 0) {
-							if(!prevRule.equalsIgnoreCase(satisfiedRule.getRuleName())) {
-								for(Map.Entry<Rule, List<Double>> entry : rule_output_map.entrySet()) {
-									Rule rule1= entry.getKey();
-									if(rule1 == satisfiedRule) {
-										int count_loop = 0;
-											List<Double> values = entry.getValue();
-											for(Double value : values) {
-												
-												
-												ArrayList<Double> newParamValues = new ArrayList<>();
-												newParamValues.addAll(paramValues);
-												for(int a= 0; a<params.length; a++) {
-													String param = params[a];
-													if(param.equalsIgnoreCase("$RULE_OUTPUT")) {
-														newParamValues.add(a, value);
-														
-														
-													}
-												}
-												
-												Object compAmt= calcAPI.replaceAndCalcCompAmt(newParamValues,formula);
-												
-												// get rule start and end calc dates
-												 for(Map.Entry<Rule, Map<Date,Date>> rule_dates_map : rule_freq_map.entrySet()) {
-													Rule keyRule = rule_dates_map.getKey();
-													if(keyRule == rule1) {
-														CalculationSimple calculationSimple = new CalculationSimple();
-														Date ruleCalcStartDate1=new Date();
-														Date ruleCalcEndDate1=new Date();
-														Map<Date,Date> dates = rule_dates_map.getValue();
-														Object startDate_key = dates.keySet().toArray()[count_loop];
-														Object endDate_val = dates.get(startDate_key);
+
+						// new code
+						
+						for(Map.Entry<Employee,Map<Rule, Map<Date,Date>>> emp_rule_dates_map : emp_rule_freq_map.entrySet()) {
+							 if(emp == emp_rule_dates_map.getKey()) {
+								 for(Map.Entry<Rule, Map<Date,Date>> rule_dates_map : emp_rule_dates_map.getValue().entrySet()) {
+									 Rule keyRule = rule_dates_map.getKey();
+									 if(keyRule == satisfiedRule) {
+										 Map<Date,Date> ruleDates = rule_dates_map.getValue();
+										 for(Map.Entry<Date, Date> dateMap : ruleDates.entrySet()) {
+											 Date sd= dateMap.getKey();
+											 Date ed= dateMap.getValue();
+											 for(Map.Entry<Rule, Map<Map<Date,Date>,Double>> entry : rule_date_output_map.entrySet()) {
+												 Rule rule1= entry.getKey();
+												 if(keyRule.getRuleName().equals(rule1.getRuleName())) {
+													 Map<Map<Date,Date>,Double> dateOutputMap = entry.getValue();
+													 for(Map.Entry<Map<Date,Date>,Double> date_output_entry : dateOutputMap.entrySet()) {
+														 Map<Date,Date> dates = date_output_entry.getKey();
+														 for(Map.Entry<Date, Date> datesEntry : dates.entrySet()) {
+															 Date rCalcStartDate = datesEntry.getKey();
+															 Date rCalcEndDate = datesEntry.getValue();
+															 
+															 if(rCalcStartDate.equals(sd) && rCalcEndDate.equals(ed)) {
+																 Double ruleOutputVal = date_output_entry.getValue();
+																 
+																 ArrayList<Double> newParamValues = new ArrayList<>();
+																	newParamValues.addAll(paramValues);
+																	for(int a= 0; a<params.length; a++) {
+																		String param = params[a];
+																		if(param.equalsIgnoreCase("$RULE_OUTPUT")) {
+																			newParamValues.add(a, ruleOutputVal);
+																			
+																		}
+																	}
+																	Object compAmt= calcAPI.replaceAndCalcCompAmt(newParamValues,formula);
+																	logger.debug("---DATA TO BE SAVED---");
+																	logger.debug("EMP ID = "+emp.getId());
+																	logger.debug("RULE NAME= "+rule1.getRuleName());
+																	logger.debug("CALC START DATE= "+rCalcStartDate);
+																	logger.debug("CALC END DATE= "+rCalcEndDate);
+																	logger.debug("COMP AMT= "+compAmt);
+																	
+																	Map<Date,Date> m1 = new HashMap<>();
+																	m1.put(rCalcStartDate, rCalcEndDate);
+																	Map<Map<Date,Date>, Object> m2 = new HashMap<>();
+																	m2.put(m1, compAmt);
+																	Map<Rule,Map<Map<Date,Date>, Object>> m3 = new HashMap<>();
+																	m3.put(rule, m2);
+																	return m2;
+																	
 															
-															ruleCalcStartDate1 = (Date) startDate_key;
-															ruleCalcEndDate1 = (Date) endDate_val;
-															
-															
-															
-															logger.debug("---DATA TO BE SAVED---");
-															logger.debug("EMP ID = "+emp.getId());
-															logger.debug("RULE ID= "+rule1.getId());
-															logger.debug("CALC START DATE= "+ruleCalcStartDate1);
-															logger.debug("CALC END DATE= "+ruleCalcEndDate1);
-															logger.debug("COMP AMT= "+compAmt);
-															
-//															calculationSimple.setCalStartDate(ruleCalcStartDate1);
-//															calculationSimple.setCalEndDate(ruleCalcEndDate1);
-//															calculationSimple.setCompensationAmount((double) compAmt);
-//															calculationSimple.setDummyCalcInternal(false);
-//															calculationSimple.setRule(satisfiedRule);
-//															calculationSimple.setEmployee(emp);
-//															
-//															calcSimpList.add(calculationSimple);
-															
-															count_loop+=1;
-														
-													}
+															 }
+														 }
+													 }
+													 
 													
-												}
-												
-											}
-											
-									}
-									prevRule= satisfiedRule.getRuleName();
-								}
-							}
+												 }
+											 }
+										 }
+										 
+										
+				
+										 
+									 }
+									 
+								 }
+							 }
 						}
 						
+						
+						
+						
 					}		
-		
 
+					
 				}
+				
+
+				
 			}else {
 				logger.debug("NO SIMPLE RULES ARE SATISFIED FOR EMP ID= "+emp.getId());
 			}
+			
 		}
+		return null;
 		
 		
 	}

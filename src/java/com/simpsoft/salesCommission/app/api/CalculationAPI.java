@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.simpsoft.salesCommission.app.model.CalcDetailsOrderLineItems;
+import com.simpsoft.salesCommission.app.model.CalculationDetails;
 import com.simpsoft.salesCommission.app.model.CalculationRoster;
 import com.simpsoft.salesCommission.app.model.CalculationSimple;
 import com.simpsoft.salesCommission.app.model.Employee;
@@ -839,77 +840,7 @@ public class CalculationAPI {
 	}
 	
 	
-	public void saveDatesSimpList(Date startdate, Date enddate, List<CalculationSimple> calcSimpList, Map<Employee, Map<OrderLineItemsSplit, Boolean>> empSplitQualMap, boolean dummyCalcInt) {
-		logger.debug("---IN SAVE DATE METHOD---");
-		Session session = sessionFactory.openSession();
-		Transaction tx = null;
-		CalculationRoster calculationRoster = new CalculationRoster();
-		List<CalculationSimple> calSimp = new ArrayList<CalculationSimple>();
-		try {
-			tx = session.beginTransaction();
-			logger.debug("ROSTER START DATE= "+startdate);
-			calculationRoster.setStartDate(startdate);
-			logger.debug("ROSTER END DATE= "+enddate);
-			calculationRoster.setEndDate(enddate);
-			logger.debug("ROSTER CALC SIMP LIST");
-			for(CalculationSimple calculationSimple : calcSimpList) {
-				logger.debug("ROSTER CALC START DATE= "+calculationSimple.getCalStartDate());
-				logger.debug("ROSTER CALC END DATE= "+calculationSimple.getCalEndDate());
-				logger.debug("ROSTER COMP AMT= "+calculationSimple.getCompensationAmount());
-				logger.debug("ROSTER EMP ID= "+calculationSimple.getEmployee().getId());
-				logger.debug("ROSTER RULE ID= "+calculationSimple.getRule().getId());
-				CalculationSimple simple = new CalculationSimple();
-				simple.setCalStartDate(calculationSimple.getCalStartDate());
-				simple.setCalEndDate(calculationSimple.getCalEndDate());
-				simple.setCompensationAmount(calculationSimple.getCompensationAmount());
-				simple.setEmployee(calculationSimple.getEmployee());
-				simple.setRule(calculationSimple.getRule());
-				simple.setDummyCalcInternal(dummyCalcInt);
-				List<CalcDetailsOrderLineItems> calcDetailsOrderLineItems = new ArrayList<>();
-				for(Map.Entry<Employee, Map<OrderLineItemsSplit, Boolean>> entry_main : empSplitQualMap.entrySet()) {
-					if(entry_main.getKey().getId() == calculationSimple.getEmployee().getId()) {
-						logger.debug("FOR EMP ID= "+entry_main.getKey().getId());
-						Map<OrderLineItemsSplit, Boolean> map = entry_main.getValue();
-						for(Map.Entry<OrderLineItemsSplit, Boolean> entry : map.entrySet()) {
-							CalcDetailsOrderLineItems calcDetailsOrderLineItem = new CalcDetailsOrderLineItems();
-							calcDetailsOrderLineItem.setItemsSplit(entry.getKey());
-							logger.debug("ORDER LINE ITEM SPLIT ID= "+entry.getKey().getId());
-							calcDetailsOrderLineItem.setQualificationFlag(entry.getValue());
-							logger.debug("QUALIFICATION FLAG= "+entry.getValue());
-							if(entry.getValue() == true) {
-								calcDetailsOrderLineItem.setCompensationAmount( ((entry.getKey().getSplitQuantity()/100)*(calculationSimple.getCompensationAmount())) );
-								logger.debug("COMP AMOUNT IN CALC_DETAILS_ORDER_LINE_ITEMS= "+((entry.getKey().getSplitQuantity()/100)*(calculationSimple.getCompensationAmount())));
-							}else {
-								calcDetailsOrderLineItem.setCompensationAmount(0);
-								logger.debug("COMP AMOUNT IN CALC_DETAILS_ORDER_LINE_ITEMS= 0");
-							}
-							
-							calcDetailsOrderLineItems.add(calcDetailsOrderLineItem);
-						}
-						simple.setCalcDetailsOrderLineItemsList(calcDetailsOrderLineItems);
-						break;
-					}
-					
-				}
-				
-				calSimp.add(simple);
-				
-				
-			}
-			calculationRoster.setCalcSimpleList(calSimp);
-			
-			session.merge(calculationRoster);
-			tx.commit();
-			logger.debug("---SAVED---");
-		}catch(HibernateException e) {
-			if (tx != null)
-				tx.rollback();
-			e.printStackTrace();
-		}finally {
-			session.close();
 	
-		}
-	}
 	
 	/**
 	 * @param ruleAPI
@@ -1042,6 +973,85 @@ public class CalculationAPI {
 	}
 	
 	
+	
+	
+	// test 
+	
+	public void saveDatesSimpList(Date startdate, Date enddate, List<CalculationSimple> calcSimpList, Map<Employee, Map<OrderLineItemsSplit, Boolean>> empSplitQualMap, boolean dummyCalcInt) {
+		logger.debug("---IN SAVE DATE METHOD---");
+		Session session = sessionFactory.openSession();
+		Transaction tx = null;
+		CalculationRoster calculationRoster = new CalculationRoster();
+		List<CalculationSimple> calSimp = new ArrayList<CalculationSimple>();
+		try {
+			tx = session.beginTransaction();
+			logger.debug("ROSTER START DATE= "+startdate);
+			calculationRoster.setStartDate(startdate);
+			logger.debug("ROSTER END DATE= "+enddate);
+			calculationRoster.setEndDate(enddate);
+			logger.debug("ROSTER CALC SIMP LIST");
+			for(CalculationSimple calculationSimple : calcSimpList) {
+				logger.debug("ROSTER CALC START DATE= "+calculationSimple.getCalStartDate());
+				logger.debug("ROSTER CALC END DATE= "+calculationSimple.getCalEndDate());
+				logger.debug("ROSTER COMP AMT= "+calculationSimple.getCompensationAmount());
+				logger.debug("ROSTER EMP ID= "+calculationSimple.getEmployee().getId());
+				logger.debug("ROSTER RULE ID= "+calculationSimple.getRule().getId());
+				CalculationSimple simple = new CalculationSimple();
+				simple.setCalStartDate(calculationSimple.getCalStartDate());
+				simple.setCalEndDate(calculationSimple.getCalEndDate());
+				simple.setCompensationAmount(calculationSimple.getCompensationAmount());
+				simple.setEmployee(calculationSimple.getEmployee());
+				simple.setRule(calculationSimple.getRule());
+				simple.setDummyCalcInternal(dummyCalcInt);
+				List<CalcDetailsOrderLineItems> calcDetailsOrderLineItems = new ArrayList<>();
+				for(Map.Entry<Employee, Map<OrderLineItemsSplit, Boolean>> entry_main : empSplitQualMap.entrySet()) {
+					if(entry_main.getKey().getId() == calculationSimple.getEmployee().getId()) {
+						logger.debug("FOR EMP ID= "+entry_main.getKey().getId());
+						Map<OrderLineItemsSplit, Boolean> map = entry_main.getValue();
+						for(Map.Entry<OrderLineItemsSplit, Boolean> entry : map.entrySet()) {
+							CalcDetailsOrderLineItems calcDetailsOrderLineItem = new CalcDetailsOrderLineItems();
+							calcDetailsOrderLineItem.setItemsSplit(entry.getKey());
+							logger.debug("ORDER LINE ITEM SPLIT ID= "+entry.getKey().getId());
+							calcDetailsOrderLineItem.setQualificationFlag(entry.getValue());
+							logger.debug("QUALIFICATION FLAG= "+entry.getValue());
+							if(entry.getValue() == true) {
+								calcDetailsOrderLineItem.setCompensationAmount( ((entry.getKey().getSplitQuantity()/100)*(calculationSimple.getCompensationAmount())) );
+								logger.debug("COMP AMOUNT IN CALC_DETAILS_ORDER_LINE_ITEMS= "+((entry.getKey().getSplitQuantity()/100)*(calculationSimple.getCompensationAmount())));
+							}else {
+								calcDetailsOrderLineItem.setCompensationAmount(0);
+								logger.debug("COMP AMOUNT IN CALC_DETAILS_ORDER_LINE_ITEMS= 0");
+							}
+							
+							calcDetailsOrderLineItems.add(calcDetailsOrderLineItem);
+						}
+						simple.setCalcDetailsOrderLineItemsList(calcDetailsOrderLineItems);
+						break;
+					}
+					
+				}
+				
+				calSimp.add(simple);
+				
+				
+			}
+			calculationRoster.setCalcSimpleList(calSimp);
+			
+			session.merge(calculationRoster);
+			tx.commit();
+			logger.debug("---SAVED---");
+		}catch(HibernateException e) {
+			if (tx != null)
+				tx.rollback();
+			e.printStackTrace();
+		}finally {
+			session.close();
+	
+		}
+}
+	
+	
+	
+	
 	public boolean checkLineItemDate(OrderLineItems lineItem, Date ruleCalcStartDate, Date ruleCalcEndDate) {
 		logger.debug("CHECK LINE ITEM ID = "+ lineItem.getId());
 		OrderDetail orderDetail = new OrderAPI().getOrderDetailFromLineItem(lineItem.getId());
@@ -1077,6 +1087,201 @@ public class CalculationAPI {
 			
 			return result;
 		
+		
+	}
+
+	
+
+	public void saveSimpList(Date startdate, Date enddate, List<CalculationSimple> calcSimpList,
+			Map<Employee, Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>>> empRuleDateSplitMap,
+			boolean dummyCalcInt) {
+		logger.debug("---IN SAVE DATE METHOD---");
+		Session session = sessionFactory.openSession();
+		Transaction tx = null;
+		CalculationRoster calculationRoster = new CalculationRoster();
+		List<CalculationSimple> calSimp = new ArrayList<CalculationSimple>();
+		try {
+			tx = session.beginTransaction();
+			logger.debug("ROSTER START DATE= "+startdate);
+			calculationRoster.setStartDate(startdate);
+			logger.debug("ROSTER END DATE= "+enddate);
+			calculationRoster.setEndDate(enddate);
+			logger.debug("ROSTER CALC SIMP LIST");
+			logger.debug("calcSimpList size = "+ calcSimpList.size());
+			for(CalculationSimple calculationSimple : calcSimpList) {
+				logger.debug("ROSTER CALC START DATE= "+calculationSimple.getCalStartDate());
+				logger.debug("ROSTER CALC END DATE= "+calculationSimple.getCalEndDate());
+				logger.debug("ROSTER COMP AMT= "+calculationSimple.getCompensationAmount());
+				logger.debug("ROSTER EMP ID= "+calculationSimple.getEmployee().getId());
+				logger.debug("ROSTER RULE ID= "+calculationSimple.getRule().getId());
+				CalculationSimple simple = new CalculationSimple();
+				simple.setCalStartDate(calculationSimple.getCalStartDate());
+				simple.setCalEndDate(calculationSimple.getCalEndDate());
+				simple.setCompensationAmount(calculationSimple.getCompensationAmount());
+				simple.setEmployee(calculationSimple.getEmployee());
+				simple.setRule(calculationSimple.getRule());
+				simple.setDummyCalcInternal(dummyCalcInt);
+				List<CalcDetailsOrderLineItems> calcDetailsOrderLineItems = new ArrayList<>();
+				for(Map.Entry<Employee, Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>>> entry_main : empRuleDateSplitMap.entrySet()) {
+					if(entry_main.getKey().getId() == calculationSimple.getEmployee().getId()) {
+						logger.debug("FOR EMP ID= "+entry_main.getKey().getId());
+						Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> map = entry_main.getValue();
+						for(Map.Entry<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> entry : map.entrySet()) {
+							logger.debug("FOR RULE= "+entry.getKey().getRuleName());
+							for(Map.Entry<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>> dateSplitMap : entry.getValue().entrySet() ) {
+								Map<Date,Date> datesMap = dateSplitMap.getKey();
+								
+								for(Map.Entry<Date, Date> date : datesMap.entrySet()) {
+									if(date.getKey().equals(calculationSimple.getCalStartDate())&& date.getValue().equals(calculationSimple.getCalEndDate())) {
+										logger.debug("RULE CALC START DATE= "+date.getKey());
+										logger.debug("RULE CALC END DATE= "+date.getValue());
+										Map<OrderLineItemsSplit, Boolean> datesMapVal = dateSplitMap.getValue();
+										for(Map.Entry<OrderLineItemsSplit, Boolean> mapEntry : datesMapVal.entrySet()) {
+											CalcDetailsOrderLineItems calcDetailsOrderLineItem = new CalcDetailsOrderLineItems();
+											calcDetailsOrderLineItem.setItemsSplit(mapEntry.getKey());
+											logger.debug("ORDER LINE ITEM SPLIT ID= "+mapEntry.getKey().getId());
+											calcDetailsOrderLineItem.setQualificationFlag(mapEntry.getValue());
+											logger.debug("QUALIFICATION FLAG= "+mapEntry.getValue());
+											if(mapEntry.getValue() == true) {
+												calcDetailsOrderLineItem.setCompensationAmount( ((mapEntry.getKey().getSplitQuantity()/100)*(calculationSimple.getCompensationAmount())) );
+												logger.debug("COMP AMOUNT IN CALC_DETAILS_ORDER_LINE_ITEMS= "+((mapEntry.getKey().getSplitQuantity()/100)*(calculationSimple.getCompensationAmount())));
+											}else {
+												calcDetailsOrderLineItem.setCompensationAmount(0);
+												logger.debug("COMP AMOUNT IN CALC_DETAILS_ORDER_LINE_ITEMS= 0");
+											}
+											
+											calcDetailsOrderLineItems.add(calcDetailsOrderLineItem);
+										}
+									}
+									
+									
+								}
+							}
+
+						}
+						simple.setCalcDetailsOrderLineItemsList(calcDetailsOrderLineItems);
+						break;
+					}
+					
+				}
+				
+				calSimp.add(simple);
+				
+				
+			}
+			calculationRoster.setCalcSimpleList(calSimp);
+			
+			session.merge(calculationRoster);
+			tx.commit();
+			logger.debug("---SAVED---");
+		}catch(HibernateException e) {
+			if (tx != null)
+				tx.rollback();
+			e.printStackTrace();
+		}finally {
+			session.close();
+	
+		}
+		
+	}
+
+	public void saveSimpRankList(Date startdate, Date enddate, List<CalculationSimple> calcSimpList,
+			Map<Employee, Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>>> empRuleDateSplitMap,
+			boolean dummyCalcInt) {
+		
+		logger.debug("---IN SAVE DATE METHOD---");
+		Session session = sessionFactory.openSession();
+		Transaction tx = null;
+		CalculationRoster calculationRoster = new CalculationRoster();
+		List<CalculationSimple> calSimp = new ArrayList<CalculationSimple>();
+		try {
+			tx = session.beginTransaction();
+			logger.debug("ROSTER START DATE= "+startdate);
+			calculationRoster.setStartDate(startdate);
+			logger.debug("ROSTER END DATE= "+enddate);
+			calculationRoster.setEndDate(enddate);
+			logger.debug("ROSTER CALC SIMP LIST");
+			for(CalculationSimple calculationSimple : calcSimpList) {
+				logger.debug("ROSTER CALC START DATE= "+calculationSimple.getCalStartDate());
+				logger.debug("ROSTER CALC END DATE= "+calculationSimple.getCalEndDate());
+				logger.debug("ROSTER COMP AMT= "+calculationSimple.getCompensationAmount());
+				logger.debug("ROSTER EMP ID= "+calculationSimple.getEmployee().getId());
+				logger.debug("ROSTER RULE ID= "+calculationSimple.getRule().getId());
+				logger.debug("CALC SIMPLE SUCCESS FLAG = "+ calculationSimple.isSuccessFlag());
+				logger.debug("RANK OF EMPLOYEE= "+ calculationSimple.getRuleOutput());
+				
+				CalculationSimple simple = new CalculationSimple();
+				simple.setCalStartDate(calculationSimple.getCalStartDate());
+				simple.setCalEndDate(calculationSimple.getCalEndDate());
+				simple.setCompensationAmount(calculationSimple.getCompensationAmount());
+				simple.setEmployee(calculationSimple.getEmployee());
+				simple.setRule(calculationSimple.getRule());
+				simple.setRuleOutput(calculationSimple.getRuleOutput());
+				simple.setSuccessFlag(calculationSimple.isSuccessFlag());
+				simple.setDummyCalcInternal(dummyCalcInt);
+				List<CalculationDetails> calcDetailsList = new ArrayList<>();
+				for(Map.Entry<Employee, Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>>> entry_main : empRuleDateSplitMap.entrySet()) {
+					if(entry_main.getKey().getId() == calculationSimple.getEmployee().getId()) {
+						logger.debug("FOR EMP ID= "+entry_main.getKey().getId());
+						Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> map = entry_main.getValue();
+						for(Map.Entry<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> entry : map.entrySet()) {
+							logger.debug("FOR RULE= "+entry.getKey().getRuleName());
+							for(Map.Entry<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>> dateSplitMap : entry.getValue().entrySet() ) {
+								Map<Date,Date> datesMap = dateSplitMap.getKey();
+								
+								for(Map.Entry<Date, Date> date : datesMap.entrySet()) {
+									if(date.getKey().equals(calculationSimple.getCalStartDate())&& date.getValue().equals(calculationSimple.getCalEndDate())) {
+										logger.debug("RULE CALC START DATE= "+date.getKey());
+										logger.debug("RULE CALC END DATE= "+date.getValue());
+										Map<OrderLineItemsSplit, Boolean> datesMapVal = dateSplitMap.getValue();
+										for(Map.Entry<OrderLineItemsSplit, Boolean> mapEntry : datesMapVal.entrySet()) {
+											CalculationDetails calcDetails = new CalculationDetails();
+											calcDetails.setItemsSplit(mapEntry.getKey());
+											logger.debug("ORDER LINE ITEM SPLIT ID= "+mapEntry.getKey().getId());
+											calcDetails.setSuccessFlag(mapEntry.getValue());
+											logger.debug("QUALIFICATION FLAG= "+mapEntry.getValue());
+											logger.debug("SPLIT QUANTITY= "+mapEntry.getKey().getSplitQuantity());
+											// show comp amt if success flags of that order split line item and calc simple record are both true
+											if(mapEntry.getValue() == true && calculationSimple.isSuccessFlag() ==true) {
+												calcDetails.setCompensationAmount( ((mapEntry.getKey().getSplitQuantity()/100)*(calculationSimple.getCompensationAmount())) );
+												logger.debug("COMP AMOUNT IN CALC_DETAILS_ORDER_LINE_ITEMS= "+((mapEntry.getKey().getSplitQuantity()/100)*(calculationSimple.getCompensationAmount())));
+											}else {
+												calcDetails.setCompensationAmount(0);
+												logger.debug("COMP AMOUNT IN CALC_DETAILS_ORDER_LINE_ITEMS= 0");
+											}
+											
+											calcDetailsList.add(calcDetails);
+										}
+									}
+									
+									
+								}
+							}
+
+						}
+						simple.setCalcDetailsList(calcDetailsList);
+						break;
+					}
+					
+				}
+				
+				calSimp.add(simple);
+				
+				
+			}
+			calculationRoster.setCalcSimpleList(calSimp);
+			
+			session.merge(calculationRoster);
+			tx.commit();
+			logger.debug("---SAVED---");
+		}catch(HibernateException e) {
+			if (tx != null)
+				tx.rollback();
+			e.printStackTrace();
+		}finally {
+			session.close();
+	
+		}
 		
 	}
 	

@@ -1,9 +1,12 @@
 package com.simpsoft.salesCommission.app.model;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
 import org.hibernate.annotations.Type;
@@ -17,7 +20,11 @@ public class CalculationDetails {
 	private long id;
 	
 	@Column(name = "compensationAmount")
-	private  int compensationAmount;
+	private  double compensationAmount;
+	
+	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "ORDER_LINE_ITEMS_SPLIT_ID")
+	private OrderLineItemsSplit itemsSplit;
 	
 	@Type(type = "org.hibernate.type.NumericBooleanType")
 	@Column(name = "successFlag", nullable = false)
@@ -49,14 +56,14 @@ public class CalculationDetails {
 	/**
 	 * @return the compensationAmount
 	 */
-	public int getCompensationAmount() {
+	public double getCompensationAmount() {
 		return compensationAmount;
 	}
 
 	/**
 	 * @param compensationAmount the compensationAmount to set
 	 */
-	public void setCompensationAmount(int compensationAmount) {
+	public void setCompensationAmount(double compensationAmount) {
 		this.compensationAmount = compensationAmount;
 	}
 
@@ -96,5 +103,12 @@ public class CalculationDetails {
 		this.baseRuleOutputForRank = baseRuleOutputForRank;
 	}
 	
+	public OrderLineItemsSplit getItemsSplit() {
+		return itemsSplit;
+	}
+
+	public void setItemsSplit(OrderLineItemsSplit itemsSplit) {
+		this.itemsSplit = itemsSplit;
+	}
 	
 }

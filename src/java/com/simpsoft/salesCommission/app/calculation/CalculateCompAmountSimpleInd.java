@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -60,6 +61,8 @@ public class CalculateCompAmountSimpleInd {
 	private static Map<OrderLineItemsSplit, Boolean> splitQualMap = null;
 	private static Map<OrderLineItemsSplit, OrderLineItems> splitLineItemMap =null;
 	
+	private static Map<Employee,Map<Rule, Map<Map<Date,Date>, Map<OrderLineItemsSplit,Boolean>>>> empRuleDateSplitMap = new HashMap<>();
+	
 	public static void main(String[] args) throws ParseException, ScriptException {
 		
 		ApplicationContext context = 
@@ -73,16 +76,20 @@ public class CalculateCompAmountSimpleInd {
 		CalculationAPI calcAPI = (CalculationAPI)context.getBean("calcApi");
 		
 		//save start and end dates in calc roster table
-//		System.out.println("Enter start date in dd/MM/yyyy format: ");
-//		String sDate1= new Scanner(System.in).next();
-		String sDate1 = args[0];
-		logger.debug("sDATE= "+sDate1);
+		System.out.println("Enter start date in dd/MM/yyyy format: ");
+		String sDate1= new Scanner(System.in).next();
+		
+//		String sDate1 = args[0];
+//		logger.debug("sDATE= "+sDate1);
+		
 		startDate=new SimpleDateFormat("dd/MM/yyyy").parse(sDate1);
 		logger.debug("START DATE= "+startDate);
-//		System.out.println("Enter end date in dd/MM/yyyy format: ");
-//		String sDate2= new Scanner(System.in).next();		
-		String sDate2 = args[1];
-		logger.debug("eDATE= "+sDate2);
+		
+		System.out.println("Enter end date in dd/MM/yyyy format: ");
+		String sDate2= new Scanner(System.in).next();	
+		
+//		String sDate2 = args[1];
+//		logger.debug("eDATE= "+sDate2);
 		 endDate=new SimpleDateFormat("dd/MM/yyyy").parse(sDate2);
 		logger.debug("END DATE= "+endDate);
 		
@@ -91,7 +98,10 @@ public class CalculateCompAmountSimpleInd {
 		//find rule assignments for all employee
 		findRuleAssgForAllEmp(calcAPI, empAPI, ruleAssAPI, ruleAPI, orderAPI, splitRuleAPI);
 		
-		calcAPI.saveDatesSimpList(startDate, endDate, calcSimpList, empSplitQualMap,false);
+
+		logger.debug("PRINTING CALC SIMP LIST");
+		logger.debug(calcSimpList);
+		calcAPI.saveSimpList(startDate, endDate, calcSimpList, empRuleDateSplitMap,false);
 	}
 
 	/**
@@ -125,7 +135,7 @@ public class CalculateCompAmountSimpleInd {
 				ruleMaxValuesMap = new HashMap<Rule,Map<String, Integer>>();
 				ruleMinValuesMap = new HashMap<Rule,Map<String, Integer>>();
 				
-				splitQualMap = new HashMap<>();
+//				splitQualMap = new HashMap<>();
 				splitLineItemMap = new HashMap<>();
 				
 					List<RuleAssignmentDetails> assignmentDetails = assignment.getRuleAssignmentDetails();
@@ -248,6 +258,7 @@ public class CalculateCompAmountSimpleInd {
 							logger.debug("IN LIST LINE ITEM= "+items.getId());
 						}
 						
+						Map<Rule, Map<Map<Date,Date>, Map<OrderLineItemsSplit,Boolean>>> ruleDateSplitMap = new HashMap<>();
 						// compare line item list with qual clause list of each rule
 						for(Rule rule :rulesAssigned) {
 							Date ruleCalcStartDate=new Date();
@@ -272,14 +283,18 @@ public class CalculateCompAmountSimpleInd {
 											if(qualified == true) {
 												logger.debug(items.getId()+"is qualified for rule= "+rule.getRuleName()+"for "
 														+ "rule calc start date= "+ruleCalcStartDate+" and rule calc "
-																+ "end date = "+ruleCalcEndDate);
+																+ "end date = "+ruleCalcEndDate+" for emp= "+emp.getEmployeeName());
 												qualifiedLineItemsList.add(items);
 											}
 										
 											
 										}								
 										if(!qualifiedLineItemsList.isEmpty()) {
-											compareLineItem(calcAPI, orderAPI, ruleAPI, qualifiedLineItemsList, rule);
+											Map<Map<Date,Date>, Map<OrderLineItemsSplit,Boolean>> dateSplitMap = compareLineItem(calcAPI, orderAPI, ruleAPI, qualifiedLineItemsList, rule,ruleCalcStartDate, ruleCalcEndDate, emp);
+											if(dateSplitMap != null) {
+												ruleDateSplitMap.put(rule, dateSplitMap);
+											}
+											
 											logger.debug("rule_ordTotal_qty size= "+rule_ordTotal_qty.size());
 											for(Map.Entry<Rule, List<List<Double>>> entry : rule_ordTotal_qty.entrySet()) {
 												Rule key_rule = entry.getKey();
@@ -307,6 +322,28 @@ public class CalculateCompAmountSimpleInd {
 							
 						}
 						
+						empRuleDateSplitMap.put(emp, ruleDateSplitMap);
+						logger.debug("PRINTING EMP RULE DATE SPLIT MAP");
+						for(Map.Entry<Employee,  Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>>> entry : empRuleDateSplitMap.entrySet()) {
+							logger.debug("EMP NAME= "+entry.getKey().getEmployeeName());
+							Map<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> entryVal = entry.getValue();
+							for(Map.Entry<Rule, Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>>> entry2 : entryVal.entrySet()) {
+								logger.debug("RULE NAME= "+entry2.getKey().getRuleName());
+								Map<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>> entry2Val = entry2.getValue();
+								for(Map.Entry<Map<Date, Date>, Map<OrderLineItemsSplit, Boolean>> entry3 : entry2Val.entrySet()) {
+									Map<Date,Date> datesMap = entry3.getKey();
+									Map<OrderLineItemsSplit, Boolean> datesMapVal= entry3.getValue();
+									for(Map.Entry<Date, Date> date : datesMap.entrySet()) {
+										logger.debug("START DATE= "+date.getKey());
+										logger.debug("END DATE= "+date.getValue());
+										for(Map.Entry<OrderLineItemsSplit, Boolean> map : datesMapVal.entrySet()) {
+											logger.debug("ORDER SPLIT LINE ITEM ID= "+map.getKey().getId());
+											logger.debug("SATISFIED= "+map.getValue());
+										}
+									}
+								}
+							}
+						}
 				}
 					empAssg_rule_ordTotal_qty.put(assignment.getId(), rule_ordTotal_qty);
 					rule_ruleassg.put(assignment.getId(), listRules);
@@ -558,6 +595,7 @@ public class CalculateCompAmountSimpleInd {
 																calculationSimple.setEmployee(emp);
 																
 																calcSimpList.add(calculationSimple);
+																logger.debug("CALC SIMP LIST= "+ calcSimpList);
 																
 																count_loop+=1;
 															
@@ -593,13 +631,16 @@ public class CalculateCompAmountSimpleInd {
 
 	
 
-	private static void compareLineItem(CalculationAPI calcAPI,OrderAPI orderAPI,RuleAPI ruleAPI,
-			List<OrderLineItems> qualifiedLineItemsList, Rule rule) {
+	private static Map<Map<Date,Date>,Map<OrderLineItemsSplit, Boolean>> compareLineItem(CalculationAPI calcAPI,OrderAPI orderAPI,RuleAPI ruleAPI,
+			List<OrderLineItems> qualifiedLineItemsList, Rule rule, Date ruleCalcStartDate, Date ruleCalcEndDate, Employee emp) {
 		if(rule.getRuleType().equalsIgnoreCase("simple")){
 			
 			//check whether the simple rule is individual
 			RuleSimple ruleSimple = ruleAPI.findSimpleRule(rule.getId());
 			if(ruleSimple.getCalculationMode().equals("individual")) {
+				splitQualMap = new HashMap<>();
+				Map<Map<Date,Date>,Map<OrderLineItemsSplit, Boolean>> dateSplitQualMap = new HashMap<>();
+				
 				boolean added=false;
 				sum_ordTotal_Qty_list = new ArrayList<>();
 				double orderTotal=0;
@@ -637,12 +678,16 @@ public class CalculateCompAmountSimpleInd {
 							if(lineItem == items) {
 								OrderLineItemsSplit lineItemSplit = entryMap.getKey();
 								splitQualMap.put(lineItemSplit, isSatisfied);
+								Map<Date,Date> dateMap = new HashMap<>();
+								dateMap.put(ruleCalcStartDate, ruleCalcEndDate);
+ 								dateSplitQualMap.put(dateMap, splitQualMap);
 								break;
 							}
 						}
 					}
 				}
-				logger.debug("FILTEREDLINEITEMSLIST FOR RULE = "+rule.getRuleName());
+				logger.debug("FILTEREDLINEITEMSLIST FOR RULE = "+rule.getRuleName()+" AND EMP= "+emp.getEmployeeName()+"FOR START DATE= "+ruleCalcStartDate
+						+ "AND END DATE= "+ruleCalcEndDate);
 				for(OrderLineItems filteredItem : filteredLineItemsList) {
 					logger.debug("FILTERED LINE ITEM ID= "+filteredItem.getId());
 					
@@ -1049,10 +1094,13 @@ public class CalculateCompAmountSimpleInd {
 					
 				}
 				rule_ordTotal_qty.put(rule, sum_ordTotal_Qty_list_main);
+				
+				return dateSplitQualMap;	
 			}		
 		
-		}	
+		}
 		
+		return null;
 	}
 
 	
