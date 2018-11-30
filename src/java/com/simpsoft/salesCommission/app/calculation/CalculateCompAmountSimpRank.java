@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Scanner;
 import java.util.Set;
 
 import javax.script.ScriptEngine;
@@ -103,16 +104,22 @@ public class CalculateCompAmountSimpRank {
 		RoleAPI roleAPI = (RoleAPI)context.getBean("roleApi");
 		
 		//save start and end dates in calc roster table
-//		System.out.println("Enter start date in dd/MM/yyyy format: ");
-//		String sDate1= new Scanner(System.in).next();
-		String sDate1 = args[0];
-		logger.debug("sDATE= "+sDate1);
+		
+		System.out.println("Enter start date in dd/MM/yyyy format: ");
+		String sDate1= new Scanner(System.in).next();
+		
+//		String sDate1 = args[0];
+//		logger.debug("sDATE= "+sDate1);
+		
 		startDate=new SimpleDateFormat("dd/MM/yyyy").parse(sDate1);
 		logger.debug("START DATE= "+startDate);
-//		System.out.println("Enter end date in dd/MM/yyyy format: ");
-//		String sDate2= new Scanner(System.in).next();		
-		String sDate2 = args[1];
-		logger.debug("eDATE= "+sDate2);
+		
+		System.out.println("Enter end date in dd/MM/yyyy format: ");
+		String sDate2= new Scanner(System.in).next();		
+		
+//		String sDate2 = args[1];
+//		logger.debug("eDATE= "+sDate2);
+		
 		 endDate=new SimpleDateFormat("dd/MM/yyyy").parse(sDate2);
 		logger.debug("END DATE= "+endDate);
 		
@@ -2575,6 +2582,7 @@ public class CalculateCompAmountSimpRank {
 								 }
 								
 								 else if(freq.equals("half-yearly")) {
+									 
 									 freqDates=calcAPI.getFullHalves(planStartDate, planEndDate, startDate, endDate);
 									 rule_freq_map.put(details.getRule(), freqDates);
 

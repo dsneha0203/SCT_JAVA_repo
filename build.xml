@@ -253,9 +253,9 @@
 	<target name="calcRank" depends="compile, package">
 				<java classname="com.simpsoft.salesCommission.app.calculation.CalculateCompAmountSimpRank"  fork="true"
 																	           failonerror="true">
-																			<!-- dd/MM/yyyy -->
+																			<!-- dd/MM/yyyy 
 																			<arg value="01/10/2018"/>
-																			<arg value="31/12/2018"/>
+																			<arg value="30/12/2018"/>-->
 																			<classpath refid="build.class.path" />
 																			<classpath path="${temp.dir.classes}" />
 																		</java> 
